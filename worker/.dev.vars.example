@@ -1,0 +1,5 @@
+# คัดลอกไฟล์นี้เป็น .dev.vars แล้วใส่ค่าจริง (ไฟล์ .dev.vars ถูก gitignore ไว้แล้ว)
+THAILLM_API_KEY=ใส่คีย์ ThaiLLM ที่นี่
+APP_TOKEN=สุ่มสตริงยาวอย่างน้อย24ตัวอักษร
+# local dev อนุญาตทุก origin
+ALLOWED_ORIGIN=*

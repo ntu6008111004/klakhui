@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <title>กล้าคุย</title>
+  <!-- ฟองคำพูด 2 อันหันหน้าเข้าหากัน = จอแบ่งครึ่ง วางบนโต๊ะ ผลัดกันพูด -->
+  <rect width="512" height="512" fill="#F5F1EA"/><g transform="translate(51.2 51.2) scale(0.8)">
+  <g transform="rotate(180 256 175)">
+    <rect x="92" y="104" width="328" height="142" rx="71" fill="#1F6F66"/>
+    <path d="M146 232 L120 292 L206 240 Z" fill="#1F6F66"/>
+    <circle cx="200" cy="175" r="17" fill="#F5F1EA"/>
+    <circle cx="256" cy="175" r="17" fill="#F5F1EA"/>
+    <circle cx="312" cy="175" r="17" fill="#F5F1EA"/>
+  </g>
+  <rect x="92" y="266" width="328" height="142" rx="71" fill="#E2572B"/>
+  <path d="M146 394 L120 454 L206 402 Z" fill="#E2572B"/>
+  <path d="M188 337 q34 -34 68 0 t68 0" fill="none" stroke="#F5F1EA" stroke-width="22" stroke-linecap="round"/>
+</g></svg>

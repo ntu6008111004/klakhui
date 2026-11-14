@@ -1,0 +1,139 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { extractTranslation, handleFast, translationOk } from "../src/fast";
+import { _resetThinkingCache, primaryIsDown } from "../src/thaillm";
+import type { Env } from "../src/types";
+
+const env: Env = {
+  THAILLM_URL: "https://thaillm.test/v1/chat/completions",
+  THAILLM_MODEL: "qwen",
+  THAILLM_FALLBACK_MODEL: "small8b",
+  THAILLM_API_KEY: "k",
+  APP_TOKEN: "t".repeat(24),
+  ALLOWED_ORIGIN: "*",
+  FALLBACK_LLM_URL: "https://typhoon.test/v1/chat/completions",
+  FALLBACK_LLM_KEY: "k2",
+  FALLBACK_LLM_MODEL: "big30b",
+};
+const req = (over: any = {}) => ({ text: "你这操作666啊", direction: "partner_to_me", target_lang: "zh", domain: "general", history: [], glossary: [], request_id: "r1", ...over }) as any;
+const full = (tr: string) => JSON.stringify({ translation: tr, tone: "compliment", note_th: "666 = เก่งมาก", back_translation_th: "", needs_confirm: false, replies: [{ th: "ขอบใจนะ", target: "谢谢啦" }], terms: [], detected_lang: "zh" });
+
+type Plan = { status?: number; delayFirst?: number; chunks?: string[]; gap?: number; cutAfter?: number };
+/** mock upstream ตามชื่อรุ่น: หน่วงเวลา / ตอบ error / stream ทีละชิ้น / ตัดกลางคัน — เคารพ abort */
+function mockUpstream(plans: Record<string, Plan>) {
+  const calls: string[] = [];
+  const aborted: string[] = [];
+  const fn = vi.fn(async (_url: string, init: RequestInit) => {
+    const model = JSON.parse(init.body as string).model as string;
+    calls.push(model);
+    const p = plans[model] ?? { status: 500 };
+    const sig = init.signal!;
+    await new Promise<void>((res, rej) => {
+      const t = setTimeout(res, p.delayFirst ?? 0);
+      sig.addEventListener("abort", () => { clearTimeout(t); aborted.push(model); rej(new DOMException("aborted", "AbortError")); }, { once: true });
+    });
+    if (p.status && p.status !== 200) return new Response("error", { status: p.status });
+    const e = new TextEncoder();
+    const body = new ReadableStream({
+      async start(c) {
+        const chunks = p.chunks ?? [];
+        for (let i = 0; i < chunks.length; i++) {
+          if (sig.aborted) return;
+          if (p.cutAfter !== undefined && i === p.cutAfter) { c.error(new Error("reset")); return; }
+          c.enqueue(e.encode(`data: ${JSON.stringify({ choices: [{ delta: { content: chunks[i] } }] })}\n\n`));
+          await new Promise((r) => setTimeout(r, p.gap ?? 1));
+        }
+        c.enqueue(e.encode("data: [DONE]\n\n"));
+        c.close();
+      },
+    });
+    sig.addEventListener("abort", () => { if (!aborted.includes(model)) aborted.push(model); }, { once: true });
+    return new Response(body, { status: 200 });
+  });
+  vi.stubGlobal("fetch", fn);
+  return { calls, aborted };
+}
+const split = (s: string, n = 6) => Array.from({ length: Math.ceil(s.length / n) }, (_, i) => s.slice(i * n, i * n + n));
+function events(text: string) {
+  return text.split("\n\n").filter((b) => b.startsWith("event:")).map((b) => ({ event: /event: (\w+)/.exec(b)![1], data: JSON.parse(/data: (.*)/.exec(b)![1]) }));
+}
+
+beforeEach(() => { _resetThinkingCache(); vi.spyOn(console, "log").mockImplementation(() => {}); });
+afterEach(() => vi.unstubAllGlobals());
+
+describe("extractTranslation", () => {
+  it("ได้คำแปลทันทีที่ string ปิด แม้ JSON ยังไม่จบ", () => {
+    expect(extractTranslation('{"translation":"นายนี่เก่ง')).toBeNull();
+    expect(extractTranslation('{"translation":"นายนี่เก่ง\\"จริงๆ\\"","tone":"jo')).toBe('นายนี่เก่ง"จริงๆ"');
+    expect(extractTranslation('<think>{"translation":"ผิด"}</think>```json\n{"translation":"ถูก"')).toBe("ถูก"); // ข้ามของใน <think>, ตัด fence
+    expect(extractTranslation('<think>x</think>{"translation":"ถูก"')).toBe("ถูก");
+  });
+  it("ตรวจภาษา", () => {
+    expect(translationOk("สวัสดี", "partner_to_me")).toBe(true);
+    expect(translationOk("你好", "partner_to_me")).toBe(false);
+    expect(translationOk("你好", "me_to_partner")).toBe(true);
+  });
+});
+
+describe("/api/translate/fast", () => {
+  it("รุ่นหลักล่มทันที → รุ่นถัดไป: partial มาก่อน แล้วตามด้วย result เต็ม", async () => {
+    const { calls } = mockUpstream({ qwen: { status: 504 }, big30b: { chunks: split(full("นายนี่เก่งจริงๆ")) } });
+    const ev = events(await handleFast(env, req(), {}).text());
+    expect(ev.map((e) => e.event)).toEqual(["partial", "result"]);
+    expect(ev[0].data.translation).toBe("นายนี่เก่งจริงๆ");
+    expect(ev[1].data).toMatchObject({ translation: "นายนี่เก่งจริงๆ", tone: "compliment", engine: "external", back_translation_th: "นายนี่เก่งจริงๆ" });
+    expect(ev[1].data.replies).toHaveLength(1);
+    expect(calls).toEqual(["qwen", "big30b"]);
+    expect(primaryIsDown()).toBe(true);
+  });
+
+  it("รุ่นแรกช้า → hedge ยิงรุ่นถัดไปคู่ขนาน ใครได้ก่อนชนะ ผู้แพ้ถูกยกเลิก", async () => {
+    const { calls, aborted } = mockUpstream({
+      qwen: { delayFirst: 400, chunks: split(full("ช้า")) },
+      big30b: { chunks: split(full("เร็ว")) },
+    });
+    const t0 = Date.now();
+    const res = handleFast(env, req(), {}, undefined, { hedgeMs: 50 });
+    const rd = res.body!.getReader();
+    const dec = new TextDecoder();
+    let txt = "", partialAt = 0;
+    for (;;) { const x = await rd.read(); if (x.done) break; txt += dec.decode(x.value); if (!partialAt && txt.includes("event: partial")) partialAt = Date.now() - t0; }
+    const ev = events(txt);
+    expect(ev[0]).toMatchObject({ event: "partial", data: { translation: "เร็ว" } });
+    expect(ev.at(-1)!.data.engine).toBe("external");
+    expect(calls).toEqual(["qwen", "big30b"]);
+    expect(aborted).toContain("qwen");
+    expect(partialAt).toBeLessThan(380); // คำแปลถึงผู้ใช้ก่อนรุ่นช้าจะตอบ (400ms)
+  });
+
+  it("รุ่นแรกตอบผิดภาษา → ข้ามไปรุ่นถัดไปทันที ไม่ส่งคำแปลผิดให้ผู้ใช้", async () => {
+    mockUpstream({ qwen: { chunks: split(full("你真厉害")) }, big30b: { chunks: split(full("เก่งจัง")) } });
+    const ev = events(await handleFast(env, req(), {}, undefined, { hedgeMs: 5000 }).text());
+    expect(ev.filter((e) => e.event === "partial").map((e) => e.data.translation)).toEqual(["เก่งจัง"]);
+    expect(ev.at(-1)!.event).toBe("result");
+  });
+
+  it("ทุกรุ่นล่ม → event: error (ไม่เงียบ ไม่ค้าง)", async () => {
+    mockUpstream({ qwen: { status: 502 }, big30b: { status: 500 }, small8b: { status: 503 } });
+    const ev = events(await handleFast(env, req(), {}).text());
+    expect(ev).toHaveLength(1);
+    expect(ev[0].event).toBe("error");
+    expect(ev[0].data.message_th).toMatch(/ขัดข้อง/);
+  });
+
+  it("ผู้ชนะหลุดกลางทางหลังส่ง partial → ยังได้ result จากคำแปลที่มี", async () => {
+    const chunks = split(full("คำแปลครบแล้ว"), 4);
+    const cutAt = chunks.findIndex((_, i) => chunks.slice(0, i).join("").includes('"tone"')) + 1;
+    mockUpstream({ qwen: { chunks, cutAfter: cutAt } });
+    const ev = events(await handleFast(env, req(), {}, undefined, { hedgeMs: 5000 }).text());
+    expect(ev.map((e) => e.event)).toEqual(["partial", "result"]);
+    expect(ev[1].data.translation).toBe("คำแปลครบแล้ว");
+  });
+
+  it("me_to_partner: partial เป็นภาษาเพื่อน + result มีแปลกลับไทย", async () => {
+    const body = JSON.stringify({ translation: "请问洗手间在哪里？", tone: "polite", note_th: "", back_translation_th: "ขอถามหน่อย ห้องน้ำอยู่ไหน", replies: [], terms: [] });
+    mockUpstream({ qwen: { chunks: split(body) } });
+    const ev = events(await handleFast(env, req({ text: "ห้องน้ำอยู่ไหน", direction: "me_to_partner" }), {}).text());
+    expect(ev[0].data.translation).toBe("请问洗手间在哪里？");
+    expect(ev[1].data.back_translation_th).toBe("ขอถามหน่อย ห้องน้ำอยู่ไหน");
+  });
+});

@@ -1,0 +1,18 @@
+name = "realtime-translator-api"
+main = "src/index.ts"
+compatibility_date = "2025-10-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Custom Domain (ผูกตอน Phase 8) — ห้ามแตะ DNS เดิมของ dentcos.com
+# routes = [{ pattern = "api-translate.dentcos.com", custom_domain = true }]
+
+[vars]
+THAILLM_URL = "https://thaillm.or.th/api/v1/chat/completions"
+THAILLM_MODEL = "qwen3.6-35b-a3b"
+# รุ่นสำรองบน ThaiLLM เมื่อรุ่นหลักล่ม/ช้า (สลับอัตโนมัติ พักรุ่นหลัก 60 วิ)
+THAILLM_FALLBACK_MODEL = "Typhoon-S-ThaiLLM-8B-Instruct,openthaigpt-thaillm-8b-instruct-v7.2"
+ALLOWED_ORIGIN = "https://translate.dentcos.com"
+
+# Secrets (ตั้งด้วย `wrangler secret put` เท่านั้น / local ใช้ .dev.vars):
+#   THAILLM_API_KEY
+#   APP_TOKEN

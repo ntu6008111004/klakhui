@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<title>กล้าคุย — ล่ามพกพา</title>
+<meta name="description" content="ล่ามพกพา ไทย ⇄ จีน อังกฤษ ญี่ปุ่น เกาหลี สำหรับคนไม่มั่นใจภาษา บอกด้วยว่าเขาพูดเล่น แซว หรือประชด">
+<meta name="theme-color" content="#F5F1EA" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#15181D" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="กล้าคุย">
+<link rel="icon" href="icons/logo.svg" type="image/svg+xml">
+<link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anuphan:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+<!-- ไอคอนวาดเอง (เส้น 1.8 ปลายมน) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8.5 21h7"/></symbol>
+    <symbol id="i-kbd" viewBox="0 0 24 24"><rect x="2.5" y="6" width="19" height="12" rx="2.5"/><path d="M6.5 10h.01M10 10h.01M13.5 10h.01M17 10h.01M7.5 14h9"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24"><path d="M4 12 20 4l-4 16-4-7-8-1Z"/><path d="m12 13 8-9"/></symbol>
+    <symbol id="i-speaker" viewBox="0 0 24 24"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></symbol>
+    <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></symbol>
+    <symbol id="i-ear" viewBox="0 0 24 24"><path d="M6.5 9a5.5 5.5 0 1 1 11 0c0 3-2.5 4-3.2 6-.6 1.7-1.3 4-4 4-1.6 0-2.8-1-3.1-2.4"/><path d="M9.5 9.5a2.5 2.5 0 0 1 5 0c0 1.4-1.3 1.9-1.8 3"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24"><rect x="6.5" y="5" width="3.5" height="14" rx="1.2"/><rect x="14" y="5" width="3.5" height="14" rx="1.2"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2.5 5 13.5h6l-1 8 8-11h-6z"/></symbol>
+    <symbol id="i-flip" viewBox="0 0 24 24"><path d="M7 4v16M7 4 4 7M7 4l3 3M17 20V4M17 20l-3-3M17 20l3-3"/></symbol>
+    <symbol id="i-retry" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5"/></symbol>
+    <symbol id="i-head" viewBox="0 0 24 24"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="14" width="4.5" height="7" rx="1.8"/><rect x="16.5" y="14" width="4.5" height="7" rx="1.8"/></symbol>
+    <symbol id="i-chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
+    <symbol id="i-hand" viewBox="0 0 24 24"><path d="M8 13V5.5a1.5 1.5 0 0 1 3 0V11M11 10V4a1.5 1.5 0 0 1 3 0v6M14 10.5V6a1.5 1.5 0 0 1 3 0v8a7 7 0 0 1-7 7h-.5a6 6 0 0 1-5-2.7L3 15.5a1.6 1.6 0 0 1 2.6-1.8L8 16"/></symbol>
+  </defs>
+</svg>
+
+<div class="app" id="app" data-layout="face">
+
+  <!-- ฝั่งเพื่อน (หมุน 180° ตอนวางโต๊ะ) -->
+  <section class="half partner" id="half-partner" aria-label="ฝั่งเพื่อน">
+    <header class="half-head">
+      <span class="who-chip" id="partner-lang-chip">中文</span>
+      <span class="half-hint" id="partner-hint">按住按钮说话，我会翻译成泰语</span>
+    </header>
+    <ol class="feed" id="feed-partner" aria-live="polite"></ol>
+    <div class="live-line" id="live-partner" hidden></div>
+    <div class="composer">
+      <form class="type-row" id="type-partner" hidden>
+        <input type="text" enterkeyhint="send" autocomplete="off" id="input-partner" placeholder="在这里输入…">
+        <button class="icon-btn solid" type="submit" aria-label="send"><svg><use href="#i-send"/></svg></button>
+      </form>
+      <div class="action-row">
+        <button class="icon-btn" type="button" data-toggle-type="partner" aria-label="keyboard"><svg><use href="#i-kbd"/></svg></button>
+        <button class="talk talk-partner" type="button" data-talk="partner">
+          <svg><use href="#i-mic"/></svg><span id="talk-partner-label">按住说话</span>
+        </button>
+        <span class="icon-btn ghost" aria-hidden="true"></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- แถบกลาง -->
+  <nav class="midbar" aria-label="เครื่องมือ">
+    <button class="icon-btn" type="button" id="btn-settings" aria-label="ตั้งค่า"><svg><use href="#i-gear"/></svg></button>
+    <button class="status-pill" type="button" id="status-pill" aria-live="polite"><i class="dot"></i><span>พร้อม</span></button>
+    <button class="listen-btn" type="button" id="btn-listen" aria-label="รับฟังตลอด"><svg><use href="#i-ear"/></svg><span>ฟังตลอด</span></button>
+    <button class="icon-btn" type="button" id="btn-flip" aria-label="สลับการวางจอ" title="วางโต๊ะ / ถือคนเดียว"><svg><use href="#i-flip"/></svg></button>
+  </nav>
+
+  <!-- ฝั่งเรา -->
+  <section class="half me" id="half-me" aria-label="ฝั่งเรา">
+    <ol class="feed" id="feed-me" aria-live="polite">
+      <li class="welcome" id="welcome">
+        <img src="icons/logo.svg" alt="" width="56" height="56">
+        <div>
+          <strong>ไม่ต้องเก่งภาษาก็คุยได้</strong>
+          <p>กดค้างที่ปุ่มส้มแล้วพูดไทยตามสบาย ติดๆ ขัดๆ ได้ แอปเรียบเรียงให้เอง<br>ให้เพื่อนกดปุ่มเขียวฝั่งตรงข้าม — แอปจะบอกด้วยว่าเขา <b>พูดเล่น แซว หรือประชด</b></p>
+        </div>
+      </li>
+    </ol>
+    <div class="live-line" id="live-me" hidden></div>
+    <div class="replies" id="replies" hidden>
+      <span class="replies-label">ตอบกลับง่ายๆ</span>
+      <div class="replies-row" id="replies-row"></div>
+    </div>
+    <div class="composer">
+      <form class="type-row" id="type-me" hidden>
+        <input type="text" enterkeyhint="send" autocomplete="off" id="input-me" placeholder="พิมพ์ภาษาไทย แล้วกดส่ง">
+        <button class="icon-btn solid" type="submit" aria-label="ส่ง"><svg><use href="#i-send"/></svg></button>
+      </form>
+      <div class="action-row">
+        <button class="icon-btn" type="button" data-toggle-type="me" aria-label="พิมพ์แทนพูด"><svg><use href="#i-kbd"/></svg></button>
+        <button class="talk talk-me" type="button" data-talk="me">
+          <svg><use href="#i-mic"/></svg><span>กดค้างแล้วพูด</span>
+        </button>
+        <button class="icon-btn" type="button" id="btn-phrases" aria-label="ประโยคด่วน"><svg><use href="#i-bolt"/></svg></button>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div class="banner" id="banner" role="status" hidden></div>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<!-- โหมดรับฟังตลอด -->
+<section class="listen-view" id="listen-view" hidden aria-label="โหมดรับฟังตลอด">
+  <header class="lv-head">
+    <span class="lv-light" id="lv-light"><i></i><span>กำลังเริ่ม…</span></span>
+    <span class="lv-lang" id="lv-lang">ฟังภาษาจีน → ไทย</span>
+    <button class="icon-btn" type="button" id="lv-close" aria-label="ปิดโหมดรับฟัง"><svg><use href="#i-x"/></svg></button>
+  </header>
+  <ol class="lv-feed" id="lv-feed" aria-live="polite"></ol>
+  <div class="lv-interim" id="lv-interim"></div>
+  <div class="lv-tip" id="lv-tip" hidden>ใส่หูฟังจะแม่นที่สุด — เสียงแอปจะไม่ย้อนเข้าไมค์</div>
+  <footer class="lv-foot">
+    <div class="seg" role="radiogroup" aria-label="การอ่านออกเสียง" id="lv-read">
+      <button type="button" data-read="all">🔊 ทุกท่อน</button>
+      <button type="button" data-read="latest">🔊 ล่าสุด</button>
+      <button type="button" data-read="off">📝 ข้อความ</button>
+    </div>
+    <div class="lv-actions">
+      <button class="big-btn quiet" type="button" id="lv-pause"><svg><use href="#i-pause"/></svg><span>หยุดฟัง</span></button>
+      <button class="big-btn hot" type="button" id="lv-speak"><svg><use href="#i-mic"/></svg><span>ฉันจะพูด</span></button>
+    </div>
+  </footer>
+</section>
+
+<!-- ประโยคด่วน -->
+<dialog class="sheet" id="dlg-phrases" aria-label="ประโยคด่วน">
+  <header class="sheet-head">
+    <h2>ประโยคด่วน</h2>
+    <p>แตะแล้วพูดให้ทันที — ใช้ได้แม้เน็ตหลุด</p>
+    <button class="icon-btn" type="button" data-close aria-label="ปิด"><svg><use href="#i-x"/></svg></button>
+  </header>
+  <div class="tabs" id="phrase-tabs" role="tablist"></div>
+  <div class="phrase-list" id="phrase-list"></div>
+</dialog>
+
+<!-- ตั้งค่า -->
+<dialog class="sheet tall" id="dlg-settings" aria-label="ตั้งค่า">
+  <header class="sheet-head">
+    <h2>ตั้งค่า</h2>
+    <button class="icon-btn" type="button" data-close aria-label="ปิด"><svg><use href="#i-x"/></svg></button>
+  </header>
+  <form class="settings" id="settings-form" onsubmit="return false">
+    <fieldset>
+      <legend>คุยกับคนที่พูดภาษา</legend>
+      <div class="cards4" id="set-lang">
+        <label><input type="radio" name="lang" value="zh"><span><b class="lb" lang="zh">中</b>จีน</span></label>
+        <label><input type="radio" name="lang" value="en"><span><b class="lb" lang="en">En</b>อังกฤษ</span></label>
+        <label><input type="radio" name="lang" value="ja"><span><b class="lb" lang="ja">あ</b>ญี่ปุ่น</span></label>
+        <label><input type="radio" name="lang" value="ko"><span><b class="lb" lang="ko">한</b>เกาหลี</span></label>
+      </div>
+    </fieldset>
+    <fieldset>
+      <legend>เรื่องที่คุย</legend>
+      <div class="cards4" id="set-domain">
+        <label><input type="radio" name="domain" value="general"><span><b>💬</b>ทั่วไป</span></label>
+        <label><input type="radio" name="domain" value="medical"><span><b>🩺</b>หมอ/ยา</span></label>
+        <label><input type="radio" name="domain" value="tech"><span><b>💻</b>เทค</span></label>
+        <label><input type="radio" name="domain" value="robotics"><span><b>🤖</b>หุ่นยนต์</span></label>
+      </div>
+    </fieldset>
+    <fieldset>
+      <legend>เสียงที่แอปพูด</legend>
+      <div class="seg" role="radiogroup">
+        <label><input type="radio" name="gender" value="female"><span>ผู้หญิง</span></label>
+        <label><input type="radio" name="gender" value="male"><span>ผู้ชาย</span></label>
+      </div>
+      <label class="range">ความเร็ว <output id="out-rate"></output><input type="range" name="rate" min="-20" max="40" step="2"></label>
+      <label class="range">ความทุ้ม ↔ แหลม <output id="out-pitch"></output><input type="range" name="pitch" min="-10" max="10" step="1"></label>
+      <button class="line-btn" type="button" id="btn-try-voice"><svg><use href="#i-speaker"/></svg>ลองฟัง</button>
+    </fieldset>
+    <fieldset>
+      <legend>หูฟังที่ใช้</legend>
+      <div class="cards3" id="set-headset">
+        <label><input type="radio" name="headset" value="wired"><span><b>🔌</b>มีสาย</span></label>
+        <label><input type="radio" name="headset" value="bt"><span><b>🎧</b>บลูทูธ/AirPods</span></label>
+        <label><input type="radio" name="headset" value="none"><span><b>📱</b>ไม่ใส่</span></label>
+      </div>
+      <p class="muted" id="headset-detected"></p>
+      <button class="line-btn" type="button" id="btn-headset-test"><svg><use href="#i-head"/></svg>ทดสอบหูฟัง (30 วินาที)</button>
+    </fieldset>
+    <fieldset>
+      <legend>โหมดรับฟังตลอด</legend>
+      <div class="seg">
+        <label><input type="radio" name="listenVoice" value="device"><span>เสียงเครื่อง (ไวสุด)</span></label>
+        <label><input type="radio" name="listenVoice" value="edge"><span>เสียงสวย</span></label>
+      </div>
+    </fieldset>
+    <fieldset>
+      <legend>คลังคำของฉัน</legend>
+      <p class="muted" id="glossary-count"></p>
+      <div class="row-btns">
+        <button class="line-btn" type="button" id="btn-add-word"><svg><use href="#i-plus"/></svg>เพิ่มคำ</button>
+        <button class="line-btn" type="button" id="btn-export">ส่งออก</button>
+        <label class="line-btn file">นำเข้า<input type="file" accept="application/json" id="file-import" hidden></label>
+      </div>
+    </fieldset>
+    <fieldset>
+      <legend>การเชื่อมต่อ</legend>
+      <label class="field">รหัสแอป (APP_TOKEN)<input type="password" name="token" autocomplete="off" placeholder="กรอกครั้งเดียว เก็บในเครื่องนี้"></label>
+      <label class="field">ที่อยู่ API<input type="url" name="api" placeholder="https://api-translate.dentcos.com"></label>
+    </fieldset>
+    <fieldset>
+      <legend>ประวัติ</legend>
+      <button class="line-btn danger" type="button" id="btn-clear">ล้างประวัติสนทนาในเครื่อง</button>
+    </fieldset>
+    <p class="muted center">ประวัติและคลังคำเก็บในเครื่องนี้เท่านั้น</p>
+  </form>
+</dialog>
+
+<!-- เพิ่มคำลงคลัง -->
+<dialog class="sheet" id="dlg-word" aria-label="เพิ่มคำลงคลัง">
+  <header class="sheet-head">
+    <h2>➕ เพิ่มคำนี้ลงคลัง</h2>
+    <button class="icon-btn" type="button" data-close aria-label="ปิด"><svg><use href="#i-x"/></svg></button>
+  </header>
+  <form class="settings" id="word-form" method="dialog">
+    <label class="field">คำ / สำนวน<input name="term" required></label>
+    <label class="field">แปลว่า (ไทย)<input name="meaning_th" required placeholder="เช่น เก่งมาก (คำชม)"></label>
+    <label class="field">ภาษา<select name="lang"><option value="zh">จีน</option><option value="en">อังกฤษ</option><option value="ja">ญี่ปุ่น</option><option value="ko">เกาหลี</option><option value="th">ไทย</option></select></label>
+    <label class="field">ประเภท<select name="tag"><option value="slang">คำแสลง</option><option value="teen">คำวัยรุ่น</option><option value="idiom">สำนวน</option><option value="formal">ทางการ</option><option value="regional">ภาษาถิ่น</option><option value="medical">การแพทย์</option><option value="tech">เทค</option><option value="programming">โปรแกรม</option><option value="robotics">หุ่นยนต์</option></select></label>
+    <button class="big-btn hot full" value="save">บันทึก ใช้ได้ทันที</button>
+  </form>
+</dialog>
+
+<!-- วิซาร์ดทดสอบหูฟัง -->
+<dialog class="sheet" id="dlg-headset" aria-label="ทดสอบหูฟัง">
+  <header class="sheet-head">
+    <h2>ทดสอบหูฟัง</h2>
+    <button class="icon-btn" type="button" data-close aria-label="ปิด"><svg><use href="#i-x"/></svg></button>
+  </header>
+  <div class="wizard" id="wizard"></div>
+</dialog>
+
+<!-- เริ่มใช้งานครั้งแรก -->
+<dialog class="sheet" id="dlg-start" aria-label="เริ่มใช้งาน">
+  <div class="start">
+    <img src="icons/logo.svg" alt="" width="72" height="72">
+    <h2>กล้าคุย</h2>
+    <p>ล่ามพกพาสำหรับคนไม่มั่นใจภาษา<br>พูดไทยตามสบาย แอปแปลให้ และบอกด้วยว่าเขาพูดเล่นหรือจริงจัง</p>
+    <form id="start-form" method="dialog" class="settings">
+      <fieldset>
+        <legend>วันนี้จะคุยกับคนพูดภาษา</legend>
+        <div class="cards4">
+          <label><input type="radio" name="lang" value="zh" checked><span><b class="lb" lang="zh">中</b>จีน</span></label>
+          <label><input type="radio" name="lang" value="en"><span><b class="lb" lang="en">En</b>อังกฤษ</span></label>
+          <label><input type="radio" name="lang" value="ja"><span><b class="lb" lang="ja">あ</b>ญี่ปุ่น</span></label>
+          <label><input type="radio" name="lang" value="ko"><span><b class="lb" lang="ko">한</b>เกาหลี</span></label>
+        </div>
+      </fieldset>
+      <label class="field">รหัสแอป<input type="password" name="token" autocomplete="off" placeholder="ขอจากผู้ดูแลแอป"></label>
+      <button class="big-btn hot full" value="go">เริ่มคุยเลย</button>
+    </form>
+  </div>
+</dialog>
+
+<audio id="player" preload="auto" playsinline></audio>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
