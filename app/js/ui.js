@@ -26,6 +26,13 @@ const icon = (id) => {
   return s;
 };
 const isCjk = (lang) => ["zh", "ja", "ko"].includes(lang);
+/** ป้ายบนการ์ดฝั่งเพื่อน (ภาษาเขา): self = ที่เขาพูด, other = ที่คนไทยพูด (แปลแล้ว) */
+const PARTNER_LABEL = {
+  zh: { self: "你说", other: "对方（泰国朋友）说" },
+  en: { self: "You said", other: "Your Thai friend said" },
+  ja: { self: "あなた", other: "タイの友だち" },
+  ko: { self: "내가 한 말", other: "태국 친구가 한 말" },
+};
 
 export class UI {
   /** @param {{onReplay:(turn:any, side:string)=>void, onRetry:(turn:any)=>void, onAddWord:(term:any)=>void, onReply:(r:any)=>void, onPhrases:()=>void}} cb */
@@ -71,16 +78,23 @@ export class UI {
     li.replaceChildren();
     const L = LANGS[lang];
     if (t.who === "partner") {
-      li.append(h("div", { class: "who" }, [`${L.flag} เพื่อนพูด`, r?.engine && r.engine !== "primary" ? h("span", { class: "engine-tag", text: "โหมดสำรอง" }) : null]));
-      li.append(h("div", { class: "src", lang, text: t.text }));
+      // ภาษาที่ตรวจได้จริง (โหมดอัตโนมัติ) — ต่างจากภาษาที่เลือก → บอกให้รู้
+      const D = LANGS[r?.detected_lang] ?? (r?.detected_lang === "th" ? { flag: "ไทย", name: "ไทย" } : null);
+      const spoke = D && r?.detected_lang !== lang ? `${D.flag} เพื่อนพูดภาษา${D.name}` : `${L.flag} เพื่อนพูด`;
+      li.append(h("div", { class: "who" }, [spoke, r?.engine === "fallback" ? h("span", { class: "engine-tag", text: "รุ่นเล็ก" }) : null]));
+      li.append(h("div", { class: "src", lang: r?.detected_lang ?? lang, text: t.text }));
       li.append(h("div", { class: "big", lang: "th", text: t.status === "pending" ? (t.partial || "กำลังแปล") : r?.translation ?? statusText(t) }));
     } else {
-      li.append(h("div", { class: "who", text: t.via === "reply" ? "คุณตอบ (ประโยคแนะนำ)" : t.via === "phrase" ? "ประโยคด่วน" : "คุณพูด" }));
-      li.append(h("div", { class: "src", lang: "th", text: t.text }));
-      li.append(h("div", { class: `big ${isCjk(lang) ? "cjk" : ""}`, lang, text: t.status === "pending" ? "กำลังแปล" : r?.translation ?? statusText(t) }));
-      if (r?.back_translation_th) li.append(h("div", { class: "back" }, [h("b", { text: "เพื่อนจะเข้าใจว่า: " }), r.back_translation_th]));
+      // ฝั่งเรา: ตัวใหญ่ = ไทยที่เราพูด (อ่านง่าย ไม่สับสนกับของเพื่อน) / ภาษาที่ส่งไปเป็นตัวเล็กข้างใต้
+      li.append(h("div", { class: "who", text: t.via === "reply" ? "ฉันตอบ (ประโยคแนะนำ)" : t.via === "phrase" ? "ฉันพูด (ประโยคด่วน)" : "ฉันพูด" }));
+      li.append(h("div", { class: "big", lang: "th", text: t.text }));
+      const sent = t.status === "pending" ? "กำลังแปล…" : r?.translation ?? statusText(t);
+      li.append(h("div", { class: "sent" }, [h("span", { class: "sent-label", text: `→ ส่งเป็น${L?.name ?? ""}` }), h("span", { class: `sent-text ${isCjk(lang) ? "cjk" : ""}`, lang, text: sent })]));
+      // ต้องเป็นไทยเท่านั้น (กันกรณีระบบใส่ภาษาเพื่อนซ้ำมา)
+      if (r?.back_translation_th && /[฀-๿]/.test(r.back_translation_th)) li.append(h("div", { class: "back" }, [h("b", { text: "เพื่อนจะเข้าใจว่า: " }), r.back_translation_th]));
     }
-    if (r && showTone(r.tone)) {
+    // ป้ายน้ำเสียงมีไว้อ่านอารมณ์ "เพื่อน" — การ์ดที่เราพูดเองไม่ต้องแสดง
+    if (r && t.who === "partner" && showTone(r.tone)) {
       const ti = toneInfo(r.tone);
       li.append(h("div", { class: "tools" }, [h("span", { class: "tone", dataset: { tone: r.tone }, text: `${ti.emoji} ${ti.label}` }), h("span", { class: "tone-hint", text: ti.hint })]));
     }
@@ -108,14 +122,16 @@ export class UI {
 
   fillPartner(li, t, lang) {
     const r = t.result;
-    li.className = `card ${t.who === "me" ? "mine" : "them"} ${t.status}`;
+    // ฝั่งเพื่อน (มุมมองของเขา): ที่เขาพูด = "ของเขา" ชิดขวา / ที่เราพูด (แปลแล้ว) ชิดซ้าย — ทั้งหมดเป็นภาษาเขา
+    li.className = `card ${t.who === "me" ? "them" : "mine"} ${t.status}`;
     li.replaceChildren();
     if (t.who === "me") {
+      li.append(h("div", { class: "who", lang, text: PARTNER_LABEL[lang]?.other ?? "" }));
       li.append(h("div", { class: `big ${isCjk(lang) ? "cjk" : ""}`, lang, text: t.status === "pending" ? "…" : r?.translation ?? "…" }));
       if (t.status === "done") li.append(h("div", { class: "tools" }, [h("button", { class: "chip-btn", type: "button", "aria-label": "replay", onclick: () => this.cb.onReplay(t, "partner") }, [icon("speaker")])]));
     } else {
-      li.append(h("div", { class: `big ${isCjk(lang) ? "cjk" : ""}`, lang, text: t.text }));
-      li.append(h("div", { class: "who", text: t.status === "done" ? "✓" : "…" }));
+      li.append(h("div", { class: "who", lang, text: `${PARTNER_LABEL[lang]?.self ?? ""} ${t.status === "done" ? "✓" : "…"}` }));
+      li.append(h("div", { class: `big ${isCjk(lang) ? "cjk" : ""}`, text: t.text }));
     }
   }
 

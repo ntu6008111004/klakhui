@@ -45,9 +45,66 @@ export function validateRequest(body: unknown): TranslateRequest {
  */
 const norm = (s: string) => s.toLowerCase().replace(/[\s\p{P}\p{S}]+/gu, "");
 /** Clean up suggested replies: drop any that copy the partner's own words / contain Thai in the target-language field / duplicates */
+/**
+ * แก้หน่วยเงินที่โมเดลเปลี่ยนเอง (อันตราย: ราคาผิดหลายเท่า) — ต้นฉบับพูดหยวน/เยน/วอน แต่คำแปลไทยกลายเป็น "บาท"
+ */
+export function fixCurrency(input: string, text: string): string {
+  if (!text || !input || !text.includes("บาท") || /บาท|泰铢|baht|฿/i.test(input)) return text;
+  const unit = /[块塊元]|人民币|rmb|yuan/i.test(input) ? "หยวน" : /[円]|えん|yen/i.test(input) ? "เยน" : /원|won/i.test(input) ? "วอน" : null;
+  return unit ? text.replace(/บาท/g, unit) : text;
+}
+
+/** 600 → 六百, 1500 → 一千五百 (พอสำหรับเช็กตัวเลขที่พูดในชีวิตประจำวัน < 1 แสน) */
+export function toChineseNum(n: number): string {
+  const d = "零一二三四五六七八九";
+  if (n === 0) return "零";
+  const units: [number, string][] = [[10000, "万"], [1000, "千"], [100, "百"], [10, "十"], [1, ""]];
+  let out = "";
+  let zero = false;
+  for (const [u, name] of units) {
+    const q = Math.floor(n / u) % 10;
+    if (u === 10000) { const w = Math.floor(n / 10000); if (w) out += toChineseNum(w) + "万"; continue; }
+    if (q) { if (zero && out) out += "零"; out += d[q] + name; zero = false; } else if (out) zero = true;
+  }
+  return out.replace(/^一十/, "十");
+}
+
+/**
+ * เรา→เพื่อน: ทุกตัวเลขที่ผู้ใช้พูด (เงิน/เวลา/จำนวน) ต้องอยู่ในคำแปล — หายไป = อันตราย (ต่อราคาผิด นัดเวลาผิด)
+ * หาย → ติดธง needs_confirm + เตือนใน note_th ให้ผู้ใช้เช็กกับเพื่อน
+ */
+export function checkNumbers(input: string, r: TranslationResult): TranslationResult {
+  const nums = [...new Set((input.match(/\d[\d,]*(?:\.\d+)?/g) ?? []).map((x) => x.replace(/,/g, "")))];
+  const tr = r.translation.replace(/[,，]/g, "");
+  const missing = nums.filter((n) => {
+    if (tr.includes(n)) return false;
+    const v = Number(n);
+    return !(Number.isInteger(v) && v < 1e8 && tr.includes(toChineseNum(v)));
+  });
+  if (missing.length) {
+    r.needs_confirm = true;
+    const warn = `⚠️ ตัวเลข ${missing.join(", ")} อาจตกหล่นในคำแปล — เช็กกับเพื่อนอีกครั้ง`;
+    r.note_th = r.note_th ? `${warn} · ${r.note_th}` : warn;
+  }
+  return r;
+}
+
+/** ป้ายน้ำเสียงให้ตรงกับคำอธิบาย: คำอธิบายบอก "ประชด" แต่ป้ายเป็นพูดเล่น/ชม → ประชด */
+export function fixTone(r: TranslationResult): TranslationResult {
+  if (/ประชด|ประชดประชัน/.test(r.note_th ?? "") && ["joke", "compliment", "neutral", "polite"].includes(r.tone)) r.tone = "sarcasm";
+  return r;
+}
+
 export function cleanReplies(r: TranslationResult, input: string): TranslationResult {
   // ภาษาที่ตรวจจากตัวอักษรแม่นกว่าที่โมเดลเดา
   r.detected_lang = scriptLang(input) ?? r.detected_lang;
+  r.translation = fixCurrency(input, r.translation);
+  r.back_translation_th = fixCurrency(input, r.back_translation_th);
+  // "เพื่อนจะเข้าใจว่า" ต้องเป็นไทยเท่านั้น (รุ่นเล็กบางทีใส่ภาษาเพื่อนซ้ำมา) — ไม่ใช่ไทย = ไม่แสดงดีกว่าแสดงผิด
+  if (r.back_translation_th && !/[฀-๿]/.test(r.back_translation_th)) r.back_translation_th = "";
+  fixTone(r);
+  // เรา→เพื่อน (คำแปลไม่ใช่ไทย) + มีตัวเลขในคำพูด → ตรวจว่าตัวเลขครบ
+  if (r.translation && /\d/.test(input) && !/[฀-๿]/.test(r.translation)) checkNumbers(input, r);
   const src = norm(input);
   const seen = new Set<string>();
   r.replies = r.replies.filter((x) => {

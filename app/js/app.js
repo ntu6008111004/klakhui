@@ -6,6 +6,7 @@ import { AudioOut } from "./audio.js";
 import { PushToTalk, STT_ERRORS, sttSupported } from "./stt.js";
 import { Glossary, toHints } from "./core/glossary.js";
 import { ApiError, MSG } from "./core/retry.js";
+import { sentenceEnd } from "./core/text.js";
 import { UI, h } from "./ui.js";
 import { db } from "./db.js";
 import { ListenMode } from "./listen-mode.js";
@@ -28,14 +29,36 @@ const ui = new UI({
   onReplay: (t, side) => side === "partner" ? audio.speak(t.result.translation, settings.lang, { priority: true }) : audio.speak(t.result.translation, "th", { priority: true }),
   onRetry: (t) => sendTurn(t),
   onAddWord: (w) => openWordDialog(w),
-  onReply: (r) => sayReady(r.th, r.target, "reply"),
+  onReply: (r) => sayReady(r.th, r.target, "reply", r.lang),
   onPhrases: () => openPhrases(),
 });
 
 /* ================= ตั้งค่า / ภาษา ================= */
+/** ภาษาไมค์แต่ละฝั่ง (การแปลตรวจภาษาเองอยู่แล้ว ตัวนี้บอก STT ว่าจะฟังภาษาอะไร) */
+// "zh-en" = เพื่อนพูดจีนปนอังกฤษ → ใช้ตัวฟังจีน (จับคำอังกฤษที่ปนมาได้ดีกว่าฟังทีละภาษา) การแปลตรวจภาษาเองทั้งประโยค
+const STT_LANG = { th: "th-TH", zh: "zh-CN", "zh-en": "zh-CN", en: "en-US", ja: "ja-JP", ko: "ko-KR" };
+const micLang = { me: "th", partner: null };
+const partnerMic = () => micLang.partner ?? settings.lang;
+function renderMicChips() {
+  for (const [side, cur] of [["me", micLang.me], ["partner", partnerMic()]]) {
+    for (const b of document.querySelectorAll(`#mic-${side} [data-mic]`)) b.setAttribute("aria-checked", String(b.dataset.mic === cur));
+  }
+}
+for (const side of ["me", "partner"]) {
+  $(`#mic-${side}`).addEventListener("click", (e) => {
+    const b = e.target.closest("[data-mic]");
+    if (!b) return;
+    micLang[side] = b.dataset.mic;
+    renderMicChips();
+    if (side === "partner" && listen.active) listen.stt?.setLang(STT_LANG[partnerMic()]);
+  });
+}
+/** ภาษาที่ใช้พูดตอบกลับ = ภาษาที่เพื่อนเพิ่งพูด (ถ้ารู้) ไม่งั้นภาษาที่เลือก */
+const replyLang = (detected) => (["zh", "en", "ja", "ko"].includes(detected) ? detected : settings.lang);
+
 function applySettings() {
+  renderMicChips();
   const L = LANGS[settings.lang];
-  $("#partner-lang-chip").textContent = `${L.flag} ${L.native}`;
   $("#partner-hint").textContent = L.hint;
   $("#talk-partner-label").textContent = L.talk;
   $("#input-partner").placeholder = L.type;
@@ -61,7 +84,7 @@ function hintsFor(text, srcLang) {
 
 /* ================= บทสนทนา ================= */
 function historyForApi() {
-  return turns.filter((t) => t.status === "done").slice(-6).map((t) => ({ who: t.who, text: t.text, translation: t.result?.translation ?? "" }));
+  return turns.filter((t) => t.status === "done").slice(-4).map((t) => ({ who: t.who, text: t.text.slice(0, 200), translation: (t.result?.translation ?? "").slice(0, 200) }));
 }
 
 function newTurn(who, text, via = "voice") {
@@ -112,6 +135,23 @@ async function sendTurn(t) {
   const slowTimer = setTimeout(() => ui.banner("slow", "เน็ตช้า — กำลังแปล…"), 4000);
   const srcLang = t.who === "me" ? "th" : settings.lang;
   let spoken = false;
+  let spokenLen = 0;
+  /** ฝั่งเรา: พูดทีละประโยคที่จบแล้ว (ไม่ต้องรอคำแปลครบทั้งก้อน) */
+  const speakUpTo = (text, final) => {
+    if (ctrl.signal.aborted) return;
+    // ฝั่งเพื่อน: อ่านไทยให้เราฟังอัตโนมัติ (ปิดได้ในตั้งค่า)
+    if (t.who === "partner" && !settings.autoReadThai) return;
+    // ท่อนแรกตัดที่จุลภาคได้ (เริ่มพูดเร็ว) — ท่อนต่อไปตัดเฉพาะจบประโยค (เสียงลื่น ไม่เป็นห้วงๆ)
+    const end = final ? text.length : sentenceEnd(text, spokenLen === 0);
+    if (end <= spokenLen) return;
+    const seg = text.slice(spokenLen, end).trim();
+    spokenLen = end;
+    if (seg) {
+      if (t.who === "me") audio.speak(seg, settings.lang);
+      else audio.speak(seg, "th", { device: settings.listenVoice !== "edge" }); // เสียงเครื่อง = เริ่มพูดทันที
+      spoken = true;
+    }
+  };
   try {
     const r = await api.translateFast({
       text: t.text,
@@ -123,10 +163,22 @@ async function sendTurn(t) {
       request_id: t.id,
     }, {
       signal: ctrl.signal,
+      // คำแปลไหลขึ้นจอระหว่างโมเดลพิมพ์ + พูดประโยคที่จบแล้ว
+      onProgress: (p) => {
+        if (ctrl.signal.aborted || t.final || !t.who) return;
+        t.result = { ...(t.result ?? {}), translation: p.translation, tone: "neutral", note_th: "", terms: [], replies: [], back_translation_th: "", needs_confirm: false };
+        t.status = "done";
+        t.partialOnly = true;
+        ui.upsert(t, settings);
+        clearTimeout(slowTimer);
+        ui.banner("", "");
+        if (inflight[side]?.turn === t) inflight[side] = null;
+        speakUpTo(p.translation, false);
+      },
       // คำแปลมาก่อน → ขึ้นจอ + พูดทันที (รายละเอียดน้ำเสียง/สำนวนตามมาทีหลัง)
       onPartial: (p) => {
         if (ctrl.signal.aborted || t.final) return;
-        t.result = { translation: p.translation, engine: p.engine, tone: "neutral", note_th: "", terms: [], replies: [], back_translation_th: "", needs_confirm: false };
+        t.result = { ...(t.result ?? {}), translation: p.translation, engine: p.engine ?? t.result?.engine, tone: "neutral", note_th: "", terms: [], replies: [], back_translation_th: "", needs_confirm: false };
         t.status = "done";
         t.partialOnly = true;
         ui.upsert(t, settings);
@@ -134,7 +186,12 @@ async function sendTurn(t) {
         ui.banner("", "");
         // พูดไปแล้ว → ห้ามถูกยกเลิก/รวมกับประโยคถัดไป (ไม่งั้นจะพูดซ้ำ)
         if (inflight[side]?.turn === t) inflight[side] = null;
-        if (t.who === "me") { audio.speak(p.translation, settings.lang); spoken = true; ui.replies([]); }
+        if (p.chunk) {
+          // ข้อความยาว: พูดทีละท่อนตามลำดับ
+          if (t.who === "me") { audio.speak(p.chunk, settings.lang); spoken = true; }
+          else if (settings.autoReadThai) { audio.speak(p.chunk, "th", { device: settings.listenVoice !== "edge" }); spoken = true; }
+        } else speakUpTo(p.translation, true);
+        if (t.who === "me") ui.replies([]);
       },
     });
     if (ctrl.signal.aborted && !t.partialOnly) return;
@@ -147,11 +204,11 @@ async function sendTurn(t) {
     ui.upsert(t, settings);
     persist(t);
     statusFromEngine(r.engine);
+    if (!spoken) speakUpTo(r.translation, true);
     if (t.who === "me") {
-      if (!spoken) audio.speak(r.translation, settings.lang);
       ui.replies([]);
     } else {
-      ui.replies(r.replies ?? []);
+      ui.replies((r.replies ?? []).map((x) => ({ ...x, lang: replyLang(r.detected_lang) })));
     }
   } catch (e) {
     if (t.partialOnly) { t.partialOnly = false; t.final = true; ui.upsert(t, settings); persist(t); return; } // มีคำแปลแล้ว ไม่ต้องแจ้ง error
@@ -197,19 +254,21 @@ async function flushOutbox() {
 }
 
 /** ประโยคที่แปลไว้แล้ว (ตอบกลับแนะนำ / ประโยคด่วน) → พูดทันที ไม่ต้องเรียก API */
-function sayReady(th, target, via) {
+function sayReady(th, target, via, lang = settings.lang) {
   const t = newTurn("me", th, via);
+  t.lang = lang;
   t.result = { translation: target, back_translation_th: th, tone: "neutral", note_th: "", terms: [], needs_confirm: false, replies: [] };
   t.status = "done";
   ui.upsert(t, settings);
   persist(t);
   ui.replies([]);
-  audio.speak(target, settings.lang, { priority: true });
+  audio.speak(target, lang, { priority: true });
 }
 
 /* ================= สถานะเครือข่าย ================= */
+/** "สำรอง" เฉพาะตอนตกไปใช้รุ่นเล็ก 8B (Typhoon 30B แปลได้ดีพอๆ รุ่นหลัก ไม่ต้องทำให้ผู้ใช้กังวล) */
 function statusFromEngine(engine) {
-  if (engine && engine !== "primary") ui.status("backup", "โหมดสำรอง");
+  if (engine === "fallback") ui.status("backup", "ใช้รุ่นสำรอง");
   else ui.status("ok", "พร้อม");
 }
 function setNet() {
@@ -247,6 +306,7 @@ function setupTalk(btn) {
   const down = (e) => {
     e.preventDefault();
     audio.unlock();
+    api.warm(); // เปิดการเชื่อมต่อรอไว้ระหว่างที่ผู้ใช้ยังพูด
     wakeLock();
     if (!sttSupported) return toggleType(side, true);
     if (pressed) return;
@@ -255,7 +315,7 @@ function setupTalk(btn) {
     if (listen.active && !listen.paused) listen.pause();
     btn.classList.add("rec");
     try { btn.setPointerCapture?.(e.pointerId); } catch { /* ignore */ }
-    const lang = side === "me" ? "th-TH" : LANGS[settings.lang].stt;
+    const lang = STT_LANG[side === "me" ? micLang.me : partnerMic()];
     ptt = new PushToTalk({
       lang,
       onInterim: (t) => ui.live(side, t),
@@ -316,7 +376,8 @@ function openPhrases() {
 /** เตรียมเสียงประโยคด่วนไว้ล่วงหน้า (เก็บใน Cache Storage ใช้ตอนออฟไลน์) */
 async function precachePhrases() {
   if (!settings.token || !navigator.onLine) return;
-  const important = phrases.phrases.filter((p) => ["basic", "stuck", "emergency", "health"].includes(p.cat));
+  if (navigator.connection?.saveData) return; // ผู้ใช้เปิดโหมดประหยัดข้อมูล
+  const important = phrases.phrases.filter((p) => ["basic", "emergency"].includes(p.cat) || (p.cat === "health" && /แพ้|ไม่สบาย|หมอ|โรงพยาบาล/.test(p.th)));
   for (const p of important) {
     try { await audio.prefetch(p[settings.lang], settings.lang); } catch { return; }
     await new Promise((r) => setTimeout(r, 250));
@@ -372,6 +433,7 @@ $("#file-import").addEventListener("change", async (e) => {
 /* ================= ตั้งค่า (dialog) ================= */
 function openSettings() {
   const f = $("#settings-form");
+  f.autoReadThai.checked = settings.autoReadThai;
   for (const k of ["lang", "domain", "gender", "headset", "listenVoice"]) {
     const el = f.querySelector(`input[name="${k}"][value="${settings[k]}"]`);
     if (el) el.checked = true;
@@ -398,12 +460,13 @@ $("#settings-form").addEventListener("input", (e) => {
     pitch: Number(fd.get("pitch")),
     token: String(fd.get("token") ?? "").trim(),
     api: String(fd.get("api") ?? "").trim(),
+    autoReadThai: f.autoReadThai.checked,
   };
   const langChanged = patch.lang !== settings.lang;
   save(patch);
   $("#out-rate").textContent = fmtRate(settings.rate);
   $("#out-pitch").textContent = fmtPitch(settings.pitch);
-  if (langChanged) { ui.replies([]); precachePhrases(); }
+  if (langChanged) { micLang.partner = null; renderMicChips(); ui.replies([]); precachePhrases(); }
 });
 $("#btn-try-voice").addEventListener("click", () => {
   audio.unlock();
@@ -438,6 +501,7 @@ watchDevices(async () => {
 /* ================= โหมดรับฟังตลอด ================= */
 const listen = new ListenMode({
   api, audio, ui,
+  sttLang: () => STT_LANG[partnerMic()],
   settings: () => settings,
   glossary: () => glossary,
   history: historyForApi,
@@ -511,6 +575,7 @@ for (const side of ["me", "partner"]) {
   });
 }
 $("#btn-phrases").addEventListener("click", openPhrases);
+$("#replies-close").addEventListener("click", () => ui.replies([]));
 $("#btn-settings").addEventListener("click", openSettings);
 $("#btn-flip").addEventListener("click", () => {
   save({ layout: settings.layout === "face" ? "solo" : "face" });
@@ -520,7 +585,7 @@ $("#status-pill").addEventListener("click", async () => {
   ui.status("slow", "กำลังเช็ก…");
   const r = await api.health();
   if (!r.ok) ui.status("down", r.error === "AUTH" ? "รหัสแอปไม่ถูก" : "ต่อระบบไม่ได้");
-  else ui.status(r.thaillm === "degraded" ? "backup" : "ok", r.thaillm === "degraded" ? "โหมดสำรอง" : "พร้อม");
+  else ui.status("ok", "พร้อม"); // รุ่นหลักล่มแต่มีรุ่นสำรองที่ดีพอ = ใช้งานได้ปกติ
 });
 document.querySelectorAll("dialog [data-close]").forEach((b) => b.addEventListener("click", () => b.closest("dialog").close()));
 document.querySelectorAll("dialog").forEach((d) => d.addEventListener("click", (e) => { if (e.target === d) d.close(); }));
@@ -558,7 +623,7 @@ async function boot() {
   flushOutbox();
   // iOS โหมดหน้าจอโฮม: Web Speech อาจใช้ไม่ได้ → แนะนำเปิดใน Safari (แสดงเมื่อเกิด error จริงใน STT_ERRORS)
   if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
-  setInterval(() => { if (navigator.onLine) flushOutbox(); }, 15_000);
+  setInterval(async () => { if (navigator.onLine && (await db.all("outbox")).length) flushOutbox(); }, 15_000);
 }
 boot();
 

@@ -6,6 +6,27 @@ import { SseParser } from "./core/sse.js";
 
 export const TIMEOUT = { translate: 10_000, tts: 8_000, health: 3_000 };
 
+/** ตัวเชื่อมท่อนคำแปล: จีน/ญี่ปุ่นไม่มีช่องว่าง, ไทย/อังกฤษ/เกาหลีมีช่องว่าง */
+export function joiner(req) {
+  return req.direction === "me_to_partner" && ["zh", "ja"].includes(req.target_lang) ? "" : " ";
+}
+
+/** รวมผลหลายท่อนเป็นผลเดียว (เรียงตาม index เดิม) */
+export function mergeResults(results, req) {
+  if (results.length === 1) return results[0];
+  return {
+    ...results[0],
+    translation: results.map((r) => r.translation).join(joiner(req)),
+    back_translation_th: results.map((r) => r.back_translation_th).filter(Boolean).join(" "),
+    note_th: [...new Set(results.map((r) => r.note_th).filter(Boolean))].join(" "),
+    terms: results.flatMap((r) => r.terms ?? []).slice(0, 6),
+    needs_confirm: results.some((r) => r.needs_confirm),
+    tone: results.find((r) => !["neutral", "polite"].includes(r.tone))?.tone ?? results[0].tone,
+    replies: results.at(-1)?.replies ?? [],
+    engine: results.some((r) => r.engine && r.engine !== "primary") ? results.find((r) => r.engine !== "primary").engine : results[0].engine,
+  };
+}
+
 export class Api extends EventTarget {
   /** @param {{base:()=>string, token:()=>string}} o */
   constructor(o) {
@@ -80,36 +101,53 @@ export class Api extends EventTarget {
    * @returns {Promise<any>} ผลตาม contract + engine
    */
   async translate(req, { signal } = {}) {
-    const srcLang = req.direction === "me_to_partner" ? "th" : req.target_lang;
-    const parts = chunkForSend(req.text, srcLang);
-    const results = [];
-    for (let i = 0; i < parts.length; i++) {
-      const res = await this.postJson("/api/translate", { ...req, text: parts[i], request_id: `${req.request_id}#${i}` }, { timeout: TIMEOUT.translate, signal });
-      results.push(await res.json());
-    }
-    if (results.length === 1) return results[0];
-    const sep = srcLang === "th" && ["zh", "ja"].includes(req.target_lang) ? "" : " ";
-    return {
-      ...results[0],
-      translation: results.map((r) => r.translation).join(req.direction === "partner_to_me" ? " " : sep),
-      back_translation_th: results.map((r) => r.back_translation_th).join(" "),
-      note_th: results.map((r) => r.note_th).filter(Boolean).join(" "),
-      terms: results.flatMap((r) => r.terms ?? []),
-      needs_confirm: results.some((r) => r.needs_confirm),
-      tone: results.find((r) => !["neutral", "polite"].includes(r.tone))?.tone ?? results[0].tone,
-      replies: results.at(-1)?.replies ?? [],
-    };
+    const parts = chunkForSend(req.text);
+    // ข้อความยาว: ส่งทุกท่อนพร้อมกัน (limiter คุม ≤ 4/วิ) แล้วเรียงผลตาม index
+    const results = await Promise.all(parts.map(async (text, i) => {
+      const res = await this.postJson("/api/translate", { ...req, text, request_id: parts.length > 1 ? `${req.request_id}#${i}` : req.request_id }, { timeout: TIMEOUT.translate, signal });
+      return res.json();
+    }));
+    return mergeResults(results, req);
+  }
+
+  /** ปลุกการเชื่อมต่อล่วงหน้า (TLS/HTTP2) ตอนผู้ใช้เริ่มกดพูด — คำขอแปลจริงจะได้ไม่ต้องรอ handshake */
+  warm() {
+    const now = Date.now();
+    if (now - (this.warmedAt ?? 0) < 20_000 || !navigator.onLine || !this.token()) return;
+    this.warmedAt = now;
+    fetch(`${this.base()}/api/health`, { headers: { "X-App-Token": this.token() }, priority: "low" }).catch(() => {});
   }
 
   /**
    * แปลแบบไวสุด: /api/translate/fast (SSE) — คำแปลมาก่อน (onPartial) แล้วรายละเอียดตามมา
-   * ข้อความยาวหลายท่อน / เส้นทางเร็วใช้ไม่ได้ → fallback ไป translate() แบบเดิม (ผู้ใช้ไม่ค้าง)
-   * @param {{signal?:AbortSignal, onPartial?:(p:{translation:string, engine?:string})=>void}} [o]
+   * ข้อความยาวหลายท่อน → แปลทุกท่อนคู่ขนาน และ onPartial ทีละท่อน "ตามลำดับ" (พูดท่อนแรกได้ทันที)
+   * @param {{signal?:AbortSignal, onPartial?:(p:{translation:string, chunk?:string, engine?:string})=>void}} [o]
    */
   async translateFast(req, o = {}) {
-    const srcLang = req.direction === "me_to_partner" ? "th" : req.target_lang;
-    if (chunkForSend(req.text, srcLang).length > 1) return this.translate(req, { signal: o.signal });
+    const parts = chunkForSend(req.text);
+    if (parts.length === 1) return this.fastOne(req, o);
+    // ข้อความยาว: ให้ท่อนแรกไหลขึ้นจอได้ ส่วนท่อนอื่นมาเป็นท่อนเต็ม
+    const partials = new Array(parts.length).fill(null);
+    let emitted = 0;
+    const flush = () => {
+      // ปล่อยท่อนที่พร้อม "ต่อเนื่องจากต้น" เท่านั้น ไม่ให้ลำดับสลับ
+      while (emitted < parts.length && partials[emitted] !== null) {
+        const chunk = partials[emitted++];
+        o.onPartial?.({ translation: partials.slice(0, emitted).join(joiner(req)), chunk });
+      }
+    };
+    const results = await Promise.all(parts.map((text, i) =>
+      this.fastOne({ ...req, text, request_id: `${req.request_id}#${i}` }, {
+        signal: o.signal,
+        onPartial: (p) => { partials[i] = p.translation; flush(); },
+      }).then((r) => { if (partials[i] === null) { partials[i] = r.translation; flush(); } return r; }),
+    ));
+    return mergeResults(results, req);
+  }
+
+  async fastOne(req, o = {}) {
     let partial = null;
+    let progText = "";
     try {
       const res = await this.postJson("/api/translate/fast", req, { timeout: TIMEOUT.translate, signal: o.signal });
       const reader = res.body.getReader();
@@ -124,7 +162,12 @@ export class Api extends EventTarget {
         ]).finally(() => clearTimeout(idle));
         if (r.done) break;
         for (const ev of p.push(dec.decode(r.value, { stream: true }))) {
-          if (ev.event === "partial") { partial = ev.data; o.onPartial?.(ev.data); }
+          if (ev.event === "progress") {
+            // server ส่งเฉพาะส่วนที่เพิ่ม {from, d} (ประหยัดเน็ต) หรือทั้งก้อน {translation}
+            progText = ev.data.translation ?? progText.slice(0, ev.data.from) + (ev.data.d ?? "");
+            o.onProgress?.({ translation: progText, latency_ms: ev.data.latency_ms });
+          }
+          else if (ev.event === "partial") { partial = ev.data; o.onPartial?.(ev.data); }
           else if (ev.event === "result") { reader.cancel().catch(() => {}); return ev.data; }
           else if (ev.event === "error") throw new ApiError(ev.data.code || "UPSTREAM_DOWN", { message_th: ev.data.message_th, retryAfterMs: ev.data.retry_after_ms });
         }
@@ -136,7 +179,13 @@ export class Api extends EventTarget {
       if (e instanceof ApiError && (e.code === "AUTH" || e.code === "BAD_INPUT" || e.code === "TOO_LARGE")) throw e;
       // ได้คำแปลแล้วแต่หลุดก่อนรายละเอียด → ใช้คำแปลที่มี ไม่ต้องขอใหม่
       if (partial) return { translation: partial.translation, engine: partial.engine, tone: "neutral", note_th: "", terms: [], replies: [], back_translation_th: "", needs_confirm: false };
-      return this.translate(req, { signal: o.signal });
+      // ขาดกลางทางก่อนได้คำแปล → ลองเส้นทางเร็วซ้ำ 1 ครั้งก่อน (มียิงสำรองคู่ขนาน ไวกว่าแบบเดิมมาก)
+      if (!o.retried) {
+        this.emit("retry", { code: e?.code ?? "NETWORK", attempt: 1, waitMs: 0 });
+        return this.fastOne(req, { ...o, retried: true });
+      }
+      const res = await this.postJson("/api/translate", req, { timeout: TIMEOUT.translate, signal: o.signal });
+      return res.json();
     }
   }
 

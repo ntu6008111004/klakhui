@@ -329,3 +329,58 @@ describe("Data: quick phrases", () => {
     }
   });
 });
+
+import { isCjkText } from "../js/core/text.js";
+import { mergeResults, joiner } from "../js/api.js";
+describe("ข้อความยาว + ภาษาอัตโนมัติ", () => {
+  it("isCjkText ตรวจจากตัวอักษร", () => {
+    expect(isCjkText("你好，今天天气不错")).toBe(true);
+    expect(isCjkText("マジでヤバい")).toBe(true);
+    expect(isCjkText("대박!")).toBe(true);
+    expect(isCjkText("The mechanic says the engine is broken")).toBe(false);
+    expect(isCjkText("สวัสดีครับ")).toBe(false);
+    expect(isCjkText("123 !!")).toBe(false);
+  });
+  it("ภาษาอังกฤษยาว (คนแปลพูด) ใช้ขีดจำกัด 600 แม้ภาษาที่เลือกเป็นจีน", () => {
+    const en = "The engine needs a new part. ".repeat(18); // ~520 ตัว
+    expect(chunkForSend(en)).toHaveLength(1);
+    expect(chunkForSend("这个发动机需要换零件。".repeat(40)).length).toBeGreaterThan(1);
+  });
+  it("รวมผลหลายท่อนตามลำดับ + ตัวเชื่อมถูกภาษา", () => {
+    const r = mergeResults([
+      { translation: "ท่อนหนึ่ง", tone: "neutral", note_th: "", terms: [], replies: [] },
+      { translation: "ท่อนสอง", tone: "joke", note_th: "มุก", terms: [], replies: [{ th: "ฮ่า", target: "哈" }] },
+    ], { direction: "partner_to_me", target_lang: "zh" });
+    expect(r.translation).toBe("ท่อนหนึ่ง ท่อนสอง");
+    expect(r.tone).toBe("joke");
+    expect(r.replies).toHaveLength(1);
+    expect(joiner({ direction: "me_to_partner", target_lang: "zh" })).toBe("");
+    expect(joiner({ direction: "me_to_partner", target_lang: "en" })).toBe(" ");
+  });
+});
+
+import { sentenceEnd } from "../js/core/text.js";
+describe("sentenceEnd (พูดทีละประโยคระหว่างคำแปลไหลเข้ามา)", () => {
+  it.each([
+    ["请问洗手间", 0],
+    ["请问洗手间在哪里？", 9],
+    ["你好！请问洗手", 3],
+    ["It costs 3.50 dollars. And", 22],
+    ["Hello there", 0],
+    ["我想问一下，", 0],
+    ["我想问一下，这个东西多少钱我想买两个", 6],
+  ])("%s → %i", (t, n) => expect(sentenceEnd(t)).toBe(n));
+});
+describe("sentenceEnd ไม่ตัดจุลภาคหลังท่อนแรก", () => {
+  it("allowComma=false ตัดเฉพาะจบประโยค", () => {
+    expect(sentenceEnd("现在我的车在路上坏了，发动机发出奇怪的响声", false)).toBe(0);
+    expect(sentenceEnd("现在我的车坏了，发动机响。还冒烟", false)).toBe(13);
+  });
+});
+describe("sentenceEnd ภาษาไทย (ไม่มีเครื่องหมายจบประโยค)", () => {
+  it("ท่อนแรกตัดที่ช่องว่างระหว่างวลีได้", () => {
+    expect(sentenceEnd("รถคุณต้องเปลี่ยนผ้าเบรก ประมาณแปดร้อยหยวนครับ")).toBe(24);
+    expect(sentenceEnd("รถคุณ ต้องเปลี่ยน")).toBe(0); // สั้นไป ยังไม่ตัด
+    expect(sentenceEnd("รถคุณต้องเปลี่ยนผ้าเบรก ประมาณแปดร้อยหยวนครับ", false)).toBe(0); // หลังท่อนแรกไม่ตัดที่ช่องว่าง
+  });
+});

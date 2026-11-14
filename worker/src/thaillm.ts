@@ -168,7 +168,7 @@ export async function chat(env: Env, messages: ChatMessage[], opts: ChatOpts = {
   if (!skipPrimary) {
     try {
       // มีรุ่นสำรอง → ไม่รอรุ่นหลักนาน (client timeout 10 วิ) — Qwen non-thinking ปกติตอบใน 1–3 วิ
-      const po = hasBackup ? { ...o, timeoutMs: Math.min(o.timeoutMs, 6000) } : o;
+      const po = hasBackup ? { ...o, timeoutMs: Math.min(o.timeoutMs, 4000) } : o;
       return await withRetry(() => callTier(primary, messages, po), {
         retries: 1,
         baseMs: 500,
@@ -188,7 +188,7 @@ export async function chat(env: Env, messages: ChatMessage[], opts: ChatOpts = {
     const tier = order[i];
     const last = i === order.length - 1;
     try {
-      const r = await withRetry(() => callTier(tier, messages, last ? o : { ...o, timeoutMs: Math.min(o.timeoutMs, 9000) }), {
+      const r = await withRetry(() => callTier(tier, messages, last ? o : { ...o, timeoutMs: Math.min(o.timeoutMs, 5000) }), {
         retries: last ? 1 : 0,
         baseMs: 500,
       });

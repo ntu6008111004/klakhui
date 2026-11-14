@@ -213,3 +213,41 @@ describe("TTS ล้มจริง → ยังได้ JSON error พร้�
     expect(r.headers.get("Access-Control-Allow-Origin")).toBeNull();
   });
 });
+
+import { fixCurrency, fixTone } from "../src/translate";
+describe("กันแปลผิดที่อันตราย", () => {
+  it("หน่วยเงิน: หยวน/เยน/วอน ห้ามกลายเป็นบาท", () => {
+    expect(fixCurrency("大概八百块", "ประมาณแปดร้อยบาท")).toBe("ประมาณแปดร้อยหยวน");
+    expect(fixCurrency("3500円です", "3500 บาท")).toBe("3500 เยน");
+    expect(fixCurrency("만 원이에요", "หมื่นบาท")).toBe("หมื่นวอน");
+    expect(fixCurrency("这个100泰铢", "อันนี้ 100 บาท")).toBe("อันนี้ 100 บาท"); // ต้นฉบับพูดบาทจริง ไม่แตะ
+    expect(fixCurrency("你好", "สวัสดีบาท")).toBe("สวัสดีบาท"); // ไม่มีเงินในต้นฉบับ ไม่แตะ
+  });
+  it("ป้ายน้ำเสียงตรงกับคำอธิบาย", () => {
+    expect(fixTone({ tone: "joke", note_th: "พูดประชด จริงๆ ไม่พอใจ" } as any).tone).toBe("sarcasm");
+    expect(fixTone({ tone: "tease", note_th: "แซวเล่น" } as any).tone).toBe("tease");
+  });
+});
+
+import { checkNumbers, toChineseNum } from "../src/translate";
+describe("ตรวจตัวเลขตกหล่น (เงิน/เวลา/จำนวน)", () => {
+  it("toChineseNum", () => {
+    expect(toChineseNum(600)).toBe("六百");
+    expect(toChineseNum(800)).toBe("八百");
+    expect(toChineseNum(1500)).toBe("一千五百");
+    expect(toChineseNum(10)).toBe("十");
+    expect(toChineseNum(105)).toBe("一百零五");
+    expect(toChineseNum(20000)).toBe("二万");
+  });
+  const base = () => ({ translation: "", note_th: "", needs_confirm: false } as any);
+  it("ตัวเลขหาย → เตือน + needs_confirm", () => {
+    const r = checkNumbers("ราคา 800 หยวนแพงไป ขอ 600 ได้ไหม", { ...base(), translation: "800元太贵了，能不能便宜点？" });
+    expect(r.needs_confirm).toBe(true);
+    expect(r.note_th).toContain("600");
+    expect(r.note_th).not.toContain("800,");
+  });
+  it("ครบ (ตัวเลข หรือ ตัวอักษรจีน) → ไม่เตือน", () => {
+    expect(checkNumbers("ขอ 600 ได้ไหม", { ...base(), translation: "六百可以吗？" }).needs_confirm).toBe(false);
+    expect(checkNumbers("1,500 บาท", { ...base(), translation: "1500泰铢" }).needs_confirm).toBe(false);
+  });
+});

@@ -49,9 +49,15 @@
   <!-- ฝั่งเพื่อน (หมุน 180° ตอนวางโต๊ะ) -->
   <section class="half partner" id="half-partner" aria-label="ฝั่งเพื่อน">
     <header class="half-head">
-      <span class="who-chip" id="partner-lang-chip">中文</span>
       <span class="half-hint" id="partner-hint">按住按钮说话，我会翻译成泰语</span>
     </header>
+    <div class="mic-langs" id="mic-partner" role="radiogroup" aria-label="ภาษาที่เพื่อนพูด (ไมค์)">
+      <button type="button" role="radio" data-mic="zh" lang="zh">中文</button>
+      <button type="button" role="radio" data-mic="en" lang="en">English</button>
+      <button type="button" role="radio" data-mic="zh-en" title="พูดจีนปนอังกฤษ">中+En</button>
+      <button type="button" role="radio" data-mic="ja" lang="ja">日本語</button>
+      <button type="button" role="radio" data-mic="ko" lang="ko">한국어</button>
+    </div>
     <ol class="feed" id="feed-partner" aria-live="polite"></ol>
     <div class="live-line" id="live-partner" hidden></div>
     <div class="composer">
@@ -90,10 +96,21 @@
     </ol>
     <div class="live-line" id="live-me" hidden></div>
     <div class="replies" id="replies" hidden>
-      <span class="replies-label">ตอบกลับง่ายๆ</span>
+      <div class="replies-head">
+        <span class="replies-label">💬 แตะเพื่อตอบ (แอปพูดให้)</span>
+        <button class="replies-x" type="button" id="replies-close" aria-label="ซ่อนประโยคตอบกลับ">×</button>
+      </div>
       <div class="replies-row" id="replies-row"></div>
     </div>
     <div class="composer">
+      <div class="mic-langs" id="mic-me" role="radiogroup" aria-label="ภาษาที่เราจะพูด (ไมค์)">
+        <span class="mic-label">ฉันพูด</span>
+        <button type="button" role="radio" data-mic="th">ไทย</button>
+        <button type="button" role="radio" data-mic="en" lang="en">English</button>
+        <button type="button" role="radio" data-mic="zh" lang="zh">中文</button>
+        <button type="button" role="radio" data-mic="ja" lang="ja">日本語</button>
+        <button type="button" role="radio" data-mic="ko" lang="ko">한국어</button>
+      </div>
       <form class="type-row" id="type-me" hidden>
         <input type="text" enterkeyhint="send" autocomplete="off" id="input-me" placeholder="พิมพ์ภาษาไทย แล้วกดส่ง">
         <button class="icon-btn solid" type="submit" aria-label="ส่ง"><svg><use href="#i-send"/></svg></button>
@@ -177,7 +194,7 @@
         <label><input type="radio" name="gender" value="female"><span>ผู้หญิง</span></label>
         <label><input type="radio" name="gender" value="male"><span>ผู้ชาย</span></label>
       </div>
-      <label class="range">ความเร็ว <output id="out-rate"></output><input type="range" name="rate" min="-20" max="40" step="2"></label>
+      <label class="range">ความเร็ว <output id="out-rate"></output><input type="range" name="rate" min="-50" max="30" step="5"></label>
       <label class="range">ความทุ้ม ↔ แหลม <output id="out-pitch"></output><input type="range" name="pitch" min="-10" max="10" step="1"></label>
       <button class="line-btn" type="button" id="btn-try-voice"><svg><use href="#i-speaker"/></svg>ลองฟัง</button>
     </fieldset>
@@ -192,7 +209,12 @@
       <button class="line-btn" type="button" id="btn-headset-test"><svg><use href="#i-head"/></svg>ทดสอบหูฟัง (30 วินาที)</button>
     </fieldset>
     <fieldset>
-      <legend>โหมดรับฟังตลอด</legend>
+      <legend>อ่านออกเสียงอัตโนมัติ</legend>
+      <label class="toggle"><input type="checkbox" name="autoReadThai"><span>🔊 เพื่อนพูด → อ่านคำแปลไทยให้ฟังทันที</span></label>
+      <p class="muted">ฝั่งเราพูด → แอปพูดภาษาเพื่อนให้อัตโนมัติเสมอ</p>
+    </fieldset>
+    <fieldset>
+      <legend>เสียงไทย (อ่านให้ฟัง / โหมดรับฟังตลอด)</legend>
       <div class="seg">
         <label><input type="radio" name="listenVoice" value="device"><span>เสียงเครื่อง (ไวสุด)</span></label>
         <label><input type="radio" name="listenVoice" value="edge"><span>เสียงสวย</span></label>

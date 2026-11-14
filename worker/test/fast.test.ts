@@ -17,15 +17,21 @@ const env: Env = {
 const req = (over: any = {}) => ({ text: "你这操作666啊", direction: "partner_to_me", target_lang: "zh", domain: "general", history: [], glossary: [], request_id: "r1", ...over }) as any;
 const full = (tr: string) => JSON.stringify({ translation: tr, tone: "compliment", note_th: "666 = เก่งมาก", back_translation_th: "", needs_confirm: false, replies: [{ th: "ขอบใจนะ", target: "谢谢啦" }], terms: [], detected_lang: "zh" });
 
-type Plan = { status?: number; delayFirst?: number; chunks?: string[]; gap?: number; cutAfter?: number };
+type Plan = { status?: number; delayFirst?: number; chunks?: string[]; gap?: number; cutAfter?: number; back?: string };
 /** mock upstream ตามชื่อรุ่น: หน่วงเวลา / ตอบ error / stream ทีละชิ้น / ตัดกลางคัน — เคารพ abort */
 function mockUpstream(plans: Record<string, Plan>) {
   const calls: string[] = [];
   const aborted: string[] = [];
   const fn = vi.fn(async (_url: string, init: RequestInit) => {
-    const model = JSON.parse(init.body as string).model as string;
-    calls.push(model);
+    const reqBody = JSON.parse(init.body as string);
+    const model = reqBody.model as string;
     const p = plans[model] ?? { status: 500 };
+    // คำขอแปลกลับ (ไม่ stream) → ตอบ JSON ธรรมดา
+    if (reqBody.stream === false) {
+      calls.push(model + ":back");
+      return new Response(JSON.stringify({ choices: [{ message: { content: p.back ?? "แปลกลับไทย" } }] }), { status: p.back === "FAIL" ? 500 : 200 });
+    }
+    calls.push(model);
     const sig = init.signal!;
     await new Promise<void>((res, rej) => {
       const t = setTimeout(res, p.delayFirst ?? 0);
@@ -53,9 +59,11 @@ function mockUpstream(plans: Record<string, Plan>) {
   return { calls, aborted };
 }
 const split = (s: string, n = 6) => Array.from({ length: Math.ceil(s.length / n) }, (_, i) => s.slice(i * n, i * n + n));
-function events(text: string) {
+function allEvents(text: string) {
   return text.split("\n\n").filter((b) => b.startsWith("event:")).map((b) => ({ event: /event: (\w+)/.exec(b)![1], data: JSON.parse(/data: (.*)/.exec(b)![1]) }));
 }
+/** event หลัก (ไม่รวม progress ที่ไหลระหว่างพิมพ์) */
+const events = (text: string) => allEvents(text).filter((e) => e.event !== "progress");
 
 beforeEach(() => { _resetThinkingCache(); vi.spyOn(console, "log").mockImplementation(() => {}); });
 afterEach(() => vi.unstubAllGlobals());
@@ -130,10 +138,57 @@ describe("/api/translate/fast", () => {
   });
 
   it("me_to_partner: partial เป็นภาษาเพื่อน + result มีแปลกลับไทย", async () => {
-    const body = JSON.stringify({ translation: "请问洗手间在哪里？", tone: "polite", note_th: "", back_translation_th: "ขอถามหน่อย ห้องน้ำอยู่ไหน", replies: [], terms: [] });
-    mockUpstream({ qwen: { chunks: split(body) } });
+    const body = JSON.stringify({ translation: "请问洗手间在哪里？", tone: "polite", note_th: "", back_translation_th: "ห้องน้ำอยู่ไหน", replies: [], terms: [] });
+    const { calls } = mockUpstream({ qwen: { chunks: split(body), back: "ขอถามหน่อย ห้องน้ำอยู่ที่ไหน" } });
     const ev = events(await handleFast(env, req({ text: "ห้องน้ำอยู่ไหน", direction: "me_to_partner" }), {}).text());
     expect(ev[0].data.translation).toBe("请问洗手间在哪里？");
-    expect(ev[1].data.back_translation_th).toBe("ขอถามหน่อย ห้องน้ำอยู่ไหน");
+    // "เพื่อนจะเข้าใจว่า" มาจากคำขอแปลกลับแยก (ไม่ใช่ที่โมเดลลอกคำพูดเรา)
+    expect(ev[1].data.back_translation_th).toBe("ขอถามหน่อย ห้องน้ำอยู่ที่ไหน");
+    expect(calls).toContain("qwen:back");
+  });
+  it("แปลกลับล้ม → ใช้ของเดิม ไม่ทำให้ผลหลักพัง", async () => {
+    const body = JSON.stringify({ translation: "请问洗手间在哪里？", tone: "polite", note_th: "", back_translation_th: "ห้องน้ำอยู่ที่ไหน", replies: [], terms: [] });
+    mockUpstream({ qwen: { chunks: split(body), back: "FAIL" } });
+    const ev = events(await handleFast(env, req({ text: "ห้องน้ำอยู่ไหน", direction: "me_to_partner" }), {}).text());
+    expect(ev.map((e) => e.event)).toEqual(["partial", "result"]);
+    expect(ev[1].data.back_translation_th).toBe("ห้องน้ำอยู่ที่ไหน");
+  });
+
+  it("คำแปลไหลขึ้นจอระหว่างพิมพ์ (progress) และทุกชิ้นเป็นส่วนต้นของคำแปลจริง", async () => {
+    const tr = "ช่างบอกว่าแผ่นเบรกหมดแล้ว ต้องเปลี่ยนใหม่ ใช้เวลาสองชั่วโมง ค่าใช้จ่ายประมาณแปดร้อยหยวน";
+    mockUpstream({ qwen: { chunks: split(full(tr), 3) } });
+    const all = allEvents(await handleFast(env, req({ text: "The brake pads are worn out" }), {}).text());
+    const prog = all.filter((e) => e.event === "progress");
+    expect(prog.length).toBeGreaterThan(2);
+    // ประกอบแบบเดียวกับแอป: ส่วนที่เพิ่ม {from, d} → ทุกขั้นต้องเป็นส่วนต้นของคำแปลจริง
+    let acc = "";
+    for (const p of prog) { acc = p.data.translation ?? acc.slice(0, p.data.from) + p.data.d; expect(tr.startsWith(acc)).toBe(true); }
+    expect(prog.every((p) => p.data.d !== undefined)).toBe(true); // ส่งแบบส่วนที่เพิ่มจริง (ประหยัดเน็ต)
+    const iPartial = all.findIndex((e) => e.event === "partial");
+    expect(all.slice(0, iPartial).every((e) => e.event === "progress")).toBe(true);
+    expect(all[iPartial].data.translation).toBe(tr);
+  });
+  it("progress ไม่ปล่อยถ้าภาษาผิด (ตรวจตั้งแต่ 3 ตัวอักษรแรก)", async () => {
+    mockUpstream({ qwen: { chunks: split(full("这是错误的语言输出内容"), 3) }, big30b: { chunks: split(full("ถูกภาษา"), 3) } });
+    const all = allEvents(await handleFast(env, req(), {}, undefined, { hedgeMs: 5000 }).text());
+    let acc = "";
+    for (const e of all.filter((x) => x.event === "progress" || x.event === "partial")) {
+      acc = e.data.translation ?? acc.slice(0, e.data.from) + e.data.d;
+      expect(acc).not.toMatch(/[一-鿿]/); // ไม่มีจีนหลุดไปถึงผู้ใช้
+      expect(acc).toMatch(/[ก-๙]/);
+    }
+  });
+});
+
+describe("จำว่ารุ่นหลักเงียบ", () => {
+  beforeEach(() => { _resetThinkingCache(); vi.spyOn(console, "log").mockImplementation(() => {}); });
+  afterEach(() => vi.unstubAllGlobals());
+  it("รุ่นหลักเงียบสนิทจนถูกแซง → พักรุ่นหลัก คำขอถัดไปไม่ต้องรอ", async () => {
+    const { calls } = mockUpstream({ qwen: { delayFirst: 2000, chunks: split(full("ช้า")) }, big30b: { chunks: split(full("เร็ว")) } });
+    await handleFast(env, req(), {}, undefined, { primaryHedgeMs: 30 }).text();
+    expect(primaryIsDown()).toBe(true);
+    calls.length = 0;
+    await handleFast(env, req(), {}, undefined, { primaryHedgeMs: 30 }).text();
+    expect(calls[0]).toBe("big30b"); // ไม่เรียกรุ่นหลักก่อนแล้ว
   });
 });

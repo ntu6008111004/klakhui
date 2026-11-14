@@ -89,9 +89,11 @@ export async function ttsHealth(): Promise<"ok" | "down"> {
  * สังเคราะห์เสียง → ReadableStream ของ mp3
  * รอจน chunk เสียงแรกมาถึงก่อนค่อย resolve (ถ้าเชื่อมต่อพัง client จะได้ error JSON แล้ว fallback เป็นเสียงเครื่อง)
  */
-export async function synthesize(r: TtsRequest, timeoutMs = 4000): Promise<ReadableStream<Uint8Array>> {
+export async function synthesize(r: TtsRequest, firstAudioMs = 2000): Promise<ReadableStream<Uint8Array>> {
+  // firstAudioMs = ต้องได้เสียงชิ้นแรกภายในเวลานี้ ไม่งั้นสลับเสียงสำรอง (ปกติได้ใน 0.4–0.9 วิ)
+  const t0 = Date.now();
   const url = `https://${BASE}/edge/v1?TrustedClientToken=${TRUSTED_CLIENT_TOKEN}&Sec-MS-GEC=${secMsGecV2()}&Sec-MS-GEC-Version=${SEC_MS_GEC_VERSION}&ConnectionId=${uuid()}`;
-  const resp = await fetch(url, {
+  const upgrade = fetch(url, {
     headers: {
       Upgrade: "websocket",
       "User-Agent": `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${CHROMIUM_MAJOR}.0.0.0 Safari/537.36 Edg/${CHROMIUM_MAJOR}.0.0.0`,
@@ -102,6 +104,10 @@ export async function synthesize(r: TtsRequest, timeoutMs = 4000): Promise<Reada
       Cookie: `muid=${randomMuid()};`,
     },
   });
+  const resp = await Promise.race([
+    upgrade,
+    new Promise<never>((_, rej) => setTimeout(() => rej(new AppError("TIMEOUT", undefined, undefined, "tts connect")), firstAudioMs)),
+  ]);
   const ws = (resp as any).webSocket as WebSocket | null;
   if (!ws) throw new AppError("UPSTREAM_DOWN", undefined, resp.status, "tts ws upgrade failed");
   (ws as any).accept();
@@ -112,7 +118,7 @@ export async function synthesize(r: TtsRequest, timeoutMs = 4000): Promise<Reada
   const stream = new ReadableStream<Uint8Array>({ start: (c) => { ctrl = c; }, cancel: () => { try { ws.close(); } catch {} } });
 
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => fail(new AppError("TIMEOUT")), timeoutMs);
+    let timer = setTimeout(() => fail(new AppError("TIMEOUT", undefined, undefined, "tts first audio")), Math.max(300, firstAudioMs - (Date.now() - t0)));
     const fail = (e: unknown) => {
       if (done) return;
       done = true;
@@ -137,7 +143,13 @@ export async function synthesize(r: TtsRequest, timeoutMs = 4000): Promise<Reada
       const f = splitBinaryFrame(new Uint8Array(ev.data as ArrayBuffer));
       if (!f || f.path !== "audio" || f.audio.length === 0) return;
       ctrl.enqueue(f.audio);
-      if (!started) { started = true; resolve(stream); }
+      if (!started) {
+        started = true;
+        // ได้เสียงแล้ว → เปลี่ยนเป็นเพดานรวม (ข้อความยาวสุด 400 ตัว ไม่ควรเกิน 20 วิ)
+        clearTimeout(timer);
+        timer = setTimeout(() => fail(new AppError("TIMEOUT", undefined, undefined, "tts total")), 20_000);
+        resolve(stream);
+      }
     });
     ws.addEventListener("error", () => fail(new AppError("UPSTREAM_DOWN", undefined, undefined, "tts ws error")));
     ws.addEventListener("close", () => { if (!done) fail(new AppError("UPSTREAM_DOWN", undefined, undefined, "tts ws closed")); });
@@ -172,7 +184,7 @@ export async function synthesizeSafe(r: TtsRequest, synth: (r: TtsRequest, timeo
   for (let i = 0; i < order.length; i++) {
     const voice = order[i];
     try {
-      const audio = await synth({ ...r, voice }, i === 0 ? 4000 : 3500);
+      const audio = await synth({ ...r, voice }, i === 0 ? 2000 : 3000);
       voiceDownUntil.delete(voice);
       return { audio, voice };
     } catch (e) {

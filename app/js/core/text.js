@@ -53,8 +53,35 @@ export function chunkText(text, limit) {
   return chunks;
 }
 
-export const chunkForSend = (text, lang) => chunkText(text, sendLimit(lang));
+/** ตรวจว่าข้อความเป็น CJK ไหม (ไม่ต้องรู้ภาษาล่วงหน้า — รองรับโหมดภาษาอัตโนมัติ) */
+export function isCjkText(text) {
+  const s = text.replace(/[\s\p{P}\p{S}\d]+/gu, "");
+  if (!s) return false;
+  const cjk = (s.match(/[぀-ヿ㐀-鿿가-힯]/g) ?? []).length;
+  return cjk / s.length > 0.3;
+}
+
+/** ตัดข้อความยาวเป็นท่อน: CJK ≤ 300 ตัว, ไทย/อังกฤษ ≤ 600 (lang ใส่ได้ ถ้าไม่ใส่จะตรวจเอง) */
+export const chunkForSend = (text, lang) => chunkText(text, lang ? sendLimit(lang) : isCjkText(text) ? 300 : 600);
 export const chunkForTts = (text) => chunkText(text, 120);
+
+/**
+ * ตำแหน่งหลังจุดจบประโยคสุดท้ายในข้อความที่ "ยังไหลเข้ามา" — 0 = ยังไม่จบสักประโยค
+ * จบประโยค: 。！？!?… หรือ . ที่ตามด้วยช่องว่าง; จุลภาค/อัฒภาคนับด้วยถ้าหลังจากนั้นมีข้อความมาแล้ว ≥ 12 ตัว (ให้พูดได้เร็วขึ้นในประโยคยาว)
+ */
+export function sentenceEnd(text, allowComma = true) {
+  let end = 0;
+  const re = allowComma ? /[。！？!?…]+|[.](?=\s)|[，,；;、](?=.{12,})/g : /[。！？!?…]+|[.](?=\s)/g;
+  for (const m of text.matchAll(re)) end = m.index + m[0].length;
+  // ภาษาไทยไม่มีเครื่องหมายจบประโยค → ท่อนแรกตัดที่ "ช่องว่างระหว่างวลี" ได้
+  // (ข้างหน้ามีไทย ≥ 10 ตัว และข้างหลังมาแล้ว ≥ 12 ตัว ไม่ให้ตัดกลางคำสั้นๆ)
+  if (!end && allowComma && /[฀-๿]/.test(text)) {
+    for (const m of text.matchAll(/ (?=.{12,})/g)) {
+      if ((text.slice(0, m.index).match(/[฀-๿]/g) ?? []).length >= 10) { end = m.index + 1; break; }
+    }
+  }
+  return end;
+}
 
 /** Normalize for comparison: lowercase, strip punctuation/spaces */
 export function normalize(s) {

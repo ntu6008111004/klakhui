@@ -1,4 +1,4 @@
-import type { Direction, Domain, GlossaryHit, HistoryTurn, TargetLang } from "./types";
+import { scriptLang, type Direction, type Domain, type GlossaryHit, type HistoryTurn, type TargetLang } from "./types";
 
 export const LANG_NAMES: Record<TargetLang, string> = {
   zh: "Chinese (Simplified, Mainland)",
@@ -32,12 +32,17 @@ TASK
 - Direction: {DIRECTION}
   • "me_to_partner": The input is spoken by a shy, non-fluent user — usually Thai, but it MAY be English or another
     language (auto-detect it). It may be messy, broken, or contain speech-recognition errors.
+    0) The input is what the USER says, in FIRST PERSON, to the partner. Keep the speaker's perspective EXACTLY:
+       "I/me/ฉัน/ผม" stays the user, "you/คุณ" stays the partner, questions stay questions, requests stay requests.
+       NEVER flip who is asking, offering, or being described
+       (e.g. "Can you give me a discount? I am a student" → "可以给我打个折吗？我是学生", NOT "你是学生吗？我可以给你优惠").
     1) Infer the intended meaning (fix obvious ASR mistakes using context).
     2) Produce a natural, polite-but-friendly sentence in {TARGET_LANG_NAME}
        that a native speaker would actually say. Keep it short and clear.
     3) Do NOT add information the user did not say.
   • "partner_to_me": The input may be in ANY language — usually {TARGET_LANG_NAME}, but other people may join
-    (e.g. a mechanic speaks Chinese while an interpreter speaks English). Auto-detect the language and set "detected_lang".
+    (e.g. a mechanic speaks Chinese while an interpreter speaks English), and ONE sentence may MIX languages
+    (e.g. Chinese with English words, "这个 bearing 坏了"). Translate ALL of it into Thai. Set "detected_lang" to the main language.
     1) Translate into natural, easy Thai.
     2) Detect tone: joke, tease, sarcasm, idiom, slang, compliment, complaint, etc.
     3) If there is slang/idiom/wordplay/hidden meaning, explain it briefly in Thai.
@@ -69,6 +74,17 @@ Return ONLY one JSON object, no markdown, no extra text, keys IN THIS ORDER ("tr
 STRICT LANGUAGE RULES
 {LANG_RULES}
 - "note_th" and every "meaning_th" MUST be written in Thai (never Chinese/English/Japanese/Korean).
+- SPEECH-RECOGNITION INPUT (both directions): the text often comes from a microphone, so words may be RUN TOGETHER
+  with no spaces (very common in Thai, e.g. "แล้วชิ้นส่วนของการ์ดจอมันหายไปไหนผมขอเอากลับไปได้ไหม"), split wrongly,
+  or misheard as similar-sounding words. First segment it into words yourself, consider plausible readings
+  (homophones, near-sounding words, brand/model names like "rtx 5090"), and choose the meaning that best fits
+  the CONTEXT. Translate EVERY element faithfully — who, what (exact object: ชิ้นส่วน/零件 ≠ อุปกรณ์เสริม/配件),
+  where (ไหน → 哪儿/where), question vs. request. Never drop or reinterpret a part.
+- NUMBERS & MONEY: keep every number and currency EXACTLY — never convert or swap currencies.
+  块/元/人民币/RMB → หยวน, 円 → เยน, 원 → วอน, $ → ดอลลาร์, ฿/บาท → 泰铢/baht. (八百块 = แปดร้อยหยวน, NEVER บาท)
+- SARCASM RULE: if CONTEXT shows a mistake, failure, lateness, or bad news, and the partner then "praises"
+  (你可真行, 真棒, さすが, すごいね, 잘한다, 대단하다, great job, nice going, well done…) → tone = "sarcasm",
+  and note_th says it is ประชด (the real meaning is the opposite).
 - Use CONTEXT to judge tone: praise right after a mistake or bad news is usually sarcasm;
   laughter words (哈哈, 笑死, lol, 草, ㅋㅋ…) mean joke/tease — explain what the joke is in note_th.
 - BE BRIEF (speed matters — every extra word delays the user):
@@ -145,10 +161,15 @@ export function buildSystemPrompt(p: PromptInput): string {
   );
 }
 
+const SCRIPT_NAMES: Record<string, string> = { zh: "Chinese", en: "English", ja: "Japanese", ko: "Korean", th: "Thai" };
+
 export function buildUserMessage(text: string, direction: Direction, targetLang: TargetLang): string {
   // Spell out the target language in the user message too (small models like 8B follow this better than the system message alone)
   if (direction === "partner_to_me") {
-    return `Translate this speech (auto-detect its language; usually ${LANG_NAMES[targetLang]}) INTO THAI (แปลเป็นภาษาไทย). JSON only; "translation" and "note_th" in Thai script:\n${text}`;
+    // ภาษาที่ตรวจจากตัวอักษรได้แน่ๆ → บอกโมเดลตรงๆ ให้ประโยคตอบกลับเป็นภาษาเดียวกับที่เขาพูด
+    const det = scriptLang(text);
+    const replyHint = det && det !== "th" && det !== "other" ? ` The partner spoke ${SCRIPT_NAMES[det]} → write every "replies[].target" in ${SCRIPT_NAMES[det]}.` : "";
+    return `Translate this speech (auto-detect its language; usually ${LANG_NAMES[targetLang]}) INTO THAI (แปลเป็นภาษาไทย). JSON only; "translation" and "note_th" in Thai script.${replyHint}\n${text}`;
   }
   return `Translate this speech (usually Thai; auto-detect) INTO ${LANG_NAMES[targetLang].toUpperCase()}. JSON only; "back_translation_th" in Thai:\n${text}`;
 }

@@ -69,6 +69,8 @@ export class AudioOut extends EventTarget {
    */
   speak(text, lang, opts = {}) {
     if (!text?.trim()) return Promise.resolve();
+    // ขอเสียงล่วงหน้าตั้งแต่ตอนเข้าคิว (ประโยคถัดไปพร้อมเล่นทันทีที่ประโยคก่อนจบ ไม่มีช่วงเงียบ)
+    if (!opts.device) this.prefetch(chunkForTts(text)[0], lang, opts).catch(() => {});
     return new Promise((resolve) => {
       const item = { text, lang, opts, resolve };
       if (opts.priority) { this.stop(); this.queue.unshift(item); } else this.queue.push(item);
@@ -100,7 +102,8 @@ export class AudioOut extends EventTarget {
     this.current = item;
     this.emit("speak", { text: item.text, lang: item.lang });
     try {
-      if (item.opts.device) await this.playDevice(item.text, item.lang, item.opts);
+      // ขอเสียงเครื่อง แต่เครื่องไม่มีเสียงภาษานั้น (เช่น Windows/Android บางรุ่นไม่มีเสียงไทย) → ใช้เสียงออนไลน์แทน ไม่ให้เงียบ
+      if (item.opts.device && this.hasDeviceVoice(item.lang)) await this.playDevice(item.text, item.lang, item.opts);
       else await this.playEdge(item.text, item.lang, item.opts);
     } catch {
       /* เงียบไว้ ไปท่อนต่อไป */
@@ -205,6 +208,17 @@ export class AudioOut extends EventTarget {
     return pool.find((v) => (s.gender === "male" ? male : female).test(v.name)) ?? pool[0] ?? null;
   }
 
+  /** เครื่องนี้มีเสียงอ่านภาษานี้ไหม */
+  hasDeviceVoice(lang) {
+    try {
+      if (!("speechSynthesis" in window)) return false;
+      const want = VOICE_LANG[lang].slice(0, 2).toLowerCase();
+      return speechSynthesis.getVoices().some((v) => v.lang.replace("_", "-").toLowerCase().startsWith(want));
+    } catch {
+      return false;
+    }
+  }
+
   playDevice(text, lang, opts = {}) {
     return new Promise((resolve) => {
       if (!("speechSynthesis" in window)) return resolve();
@@ -214,7 +228,7 @@ export class AudioOut extends EventTarget {
         const v = this.pickVoice(lang);
         if (v) u.voice = v;
         const s = this.settings();
-        u.rate = Math.max(0.6, Math.min(2, 1 + (s.rate + (opts.rateBoost ?? 0)) / 100));
+        u.rate = Math.max(0.5, Math.min(2, 1 + (s.rate + (opts.rateBoost ?? 0)) / 100)); // -50% = ครึ่งหนึ่งของความเร็วปกติ
         u.pitch = Math.max(0.5, Math.min(1.5, 1 + s.pitch / 25));
         u.volume = opts.volume ?? (s.headset === "none" ? 0.85 : 1);
         const guard = setTimeout(resolve, Math.max(4000, text.length * 220));

@@ -11,10 +11,11 @@ const DEFAULTS = {
   lang: "zh",
   domain: "general",
   gender: "female",
-  rate: 8,
+  rate: -10, // ช้าลงนิด ฟังทันสำหรับคนไม่คล่องภาษา (ปรับได้ -50%..+30%)
   pitch: -3,
   headset: "none",
   listenVoice: "device",
+  autoReadThai: true, // เพื่อนพูด → อ่านคำแปลไทยให้ฟังอัตโนมัติ
   listenRead: "latest",
   layout: "face",
   token: "",
@@ -31,9 +32,16 @@ export function defaultApi() {
   return "";
 }
 
+const SETTINGS_VERSION = 2;
+
 export function loadSettings() {
   let saved = {};
   try { saved = JSON.parse(localStorage.getItem(KEY) || "{}"); } catch { /* ไม่มี storage */ }
+  // v1 → v2: ความเร็วเดิมเร็วเกินไป (+8%) → ย้ายมาใช้ค่าใหม่ เว้นแต่ผู้ใช้ปรับให้ช้ากว่านั้นเองแล้ว
+  if ((saved.v ?? 1) < 2) {
+    if (saved.rate === undefined || saved.rate > -10) saved.rate = DEFAULTS.rate;
+    saved.v = SETTINGS_VERSION;
+  }
   return { ...DEFAULTS, ...saved };
 }
 

@@ -29,13 +29,13 @@ export class ListenMode extends EventTarget {
     this.paused = false;
     const s = this.settings();
     this.segmenter = new Segmenter({
-      lang: this.lang,
+      lang: this.sttLang ? this.sttLang().slice(0, 2) : this.lang,
       silenceMs: s.headset === "bt" ? 900 : 700,
       onSegment: (t) => this.onSegment(t),
     });
     this.coalescer = new Coalescer({ run: (job) => this.translateJob(job), sep: this.lang === "en" ? " " : "，" });
     this.coalescer.onQueued = (job) => this.ui.listenUpsert(job.id, { src: job.text, pending: true });
-    this.stt = new ContinuousListener(LANGS[this.lang].stt);
+    this.stt = new ContinuousListener(this.sttLang ? this.sttLang() : LANGS[this.lang].stt);
     this.stt.addEventListener("state", (e) => this.ui.listenLight(e.detail.state, e.detail.why));
     this.stt.addEventListener("interim", (e) => this.onInterim(e.detail.text));
     this.stt.addEventListener("final", (e) => this.onFinal(e.detail.text));
