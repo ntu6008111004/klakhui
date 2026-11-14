@@ -68,7 +68,8 @@ function applySettings() {
 
 /* ================= คลังคำ ================= */
 async function loadGlossary() {
-  const langs = ["zh", "en", "ja", "ko", "th"];
+  // learned = คำที่ "จำ" จากการทดสอบ 500 ประโยค (โหลดท้ายสุด = ใช้แทนความหมายเดิมถ้าซ้ำ) — ค้นในเครื่อง ไม่ทำให้ช้า
+  const langs = ["zh", "en", "ja", "ko", "th", "learned"];
   const lists = await Promise.all(langs.map((l) => fetch(`data/glossary/${l}.json`).then((r) => r.json()).catch(() => [])));
   builtin = lists.flat();
   userWords = await db.all("words");

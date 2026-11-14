@@ -9,3 +9,4 @@ dist/
 coverage/
 *.log
 tools/bench-results.json
+tools/bench-results*.json

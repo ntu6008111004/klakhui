@@ -251,3 +251,28 @@ describe("ตรวจตัวเลขตกหล่น (เงิน/เว�
     expect(checkNumbers("1,500 บาท", { ...base(), translation: "1500泰铢" }).needs_confirm).toBe(false);
   });
 });
+
+import { parseCjkNumber, cjkAmounts, thaiNumWords, checkCjkAmounts } from "../src/translate";
+describe("อ่านตัวเลขจีน/เกาหลีเอง (ไม่พึ่งโมเดล)", () => {
+  it.each([
+    ["一千二", 1200], ["两千", 2000], ["八百", 800], ["三万五", 35000], ["十五", 15], ["一百零五", 105],
+    ["만 오천", 15000], ["오천", 5000], ["삼만", 30000], ["천이백", 1200], ["이십", 20],
+  ])("%s = %i", (s, v) => expect(parseCjkNumber(s as string)).toBe(v));
+  it("ดึงเฉพาะเงิน/จำนวน ไม่รวมเวลา", () => {
+    expect(cjkAmounts("만 오천 원입니다")).toEqual([15000]);
+    expect(cjkAmounts("两件一起，算你一千二块")).toEqual([1200]);
+    expect(cjkAmounts("今天加班到十点")).toEqual([]); // เวลา — ไม่ตรวจ
+  });
+  it("thaiNumWords", () => {
+    expect(thaiNumWords(800)).toBe("แปดร้อย");
+    expect(thaiNumWords(15000)).toBe("หนึ่งหมื่นห้าพัน");
+    expect(thaiNumWords(21)).toBe("ยี่สิบเอ็ด");
+  });
+  it("คำแปลเงินผิด → เตือนพร้อมค่าที่ถูก / ถูก → ไม่เตือน", () => {
+    const bad = checkCjkAmounts("만 오천 원입니다", { translation: "ราคาห้าพันวอนครับ", note_th: "", needs_confirm: false } as any);
+    expect(bad.needs_confirm).toBe(true);
+    expect(bad.note_th).toContain("15,000");
+    expect(checkCjkAmounts("만 오천 원입니다", { translation: "15000 วอนครับ", note_th: "", needs_confirm: false } as any).needs_confirm).toBe(false);
+    expect(checkCjkAmounts("大概八百块", { translation: "ประมาณแปดร้อยหยวน", note_th: "", needs_confirm: false } as any).needs_confirm).toBe(false);
+  });
+});

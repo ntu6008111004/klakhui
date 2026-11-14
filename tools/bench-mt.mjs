@@ -19,8 +19,14 @@ const W = await import(pathToFileURL(tmp).href);
 const env = loadDevVars();
 const N = Number(process.argv[2] || 500);
 const SYSTEMS = (process.argv[3] || "30b,8b,mymemory").split(",");
-const corpus = JSON.parse(readFileSync(process.env.CORPUS ?? new URL("./corpus.json", import.meta.url), "utf8")).slice(0, N);
-const gloss = new Glossary().load(["zh", "en", "ja", "ko", "th"].flatMap((l) => JSON.parse(readFileSync(new URL(`../app/data/glossary/${l}.json`, import.meta.url), "utf8"))));
+let corpus = JSON.parse(readFileSync(process.env.CORPUS ?? new URL("./corpus.json", import.meta.url), "utf8")).slice(0, N);
+// ONLY_FAILED=<ไฟล์ผลเดิม> → รันซ้ำเฉพาะข้อที่ 30b เคยได้ < 2 (ใช้ยืนยันว่าแก้แล้วดีขึ้นจริง)
+if (process.env.ONLY_FAILED) {
+  const prev = JSON.parse(readFileSync(process.env.ONLY_FAILED, "utf8"));
+  corpus = corpus.filter((c) => prev[c.id]?.sys?.["30b"] && prev[c.id].sys["30b"].score < 2);
+  console.log(`รันซ้ำเฉพาะข้อที่เคยผิด/คลาด: ${corpus.length} ข้อ`);
+}
+const gloss = new Glossary().load(["zh", "en", "ja", "ko", "th", "learned"].flatMap((l) => { try { return JSON.parse(readFileSync(new URL(`../app/data/glossary/${l}.json`, import.meta.url), "utf8")); } catch { return []; } }));
 const LANG = { zh: "Chinese", en: "English", ja: "Japanese", ko: "Korean", th: "Thai" };
 const THAI = /[฀-๿]/;
 

@@ -1,6 +1,6 @@
 // Service worker: cache ตัวแอป + คลังคำ + ฟอนต์ ให้เปิดได้ตอนออฟไลน์
 // เสียงประโยคด่วนเก็บใน "qp-audio-v1" (ฝั่งแอปเป็นคนใส่) — ไม่ลบตอนอัปเดตเวอร์ชัน
-const VERSION = "v2-2026-11-14";
+const VERSION = "v3-2026-11-14";
 const SHELL = `shell-${VERSION}`;
 const RUNTIME = "runtime-v1";
 const KEEP = new Set([SHELL, RUNTIME, "qp-audio-v1"]);
@@ -9,7 +9,7 @@ const FILES = [
   "./", "index.html", "manifest.webmanifest", "css/app.css",
   "js/app.js", "js/api.js", "js/audio.js", "js/config.js", "js/db.js", "js/headset.js", "js/listen-mode.js", "js/stt.js", "js/ui.js",
   "js/core/glossary.js", "js/core/id.js", "js/core/limiter.js", "js/core/listen.js", "js/core/retry.js", "js/core/sse.js", "js/core/text.js", "js/core/tone.js",
-  "data/quick-phrases.json", "data/glossary/zh.json", "data/glossary/en.json", "data/glossary/ja.json", "data/glossary/ko.json", "data/glossary/th.json",
+  "data/quick-phrases.json", "data/glossary/zh.json", "data/glossary/en.json", "data/glossary/ja.json", "data/glossary/ko.json", "data/glossary/th.json", "data/glossary/learned.json",
   "icons/logo.svg", "icons/icon-192.png", "icons/icon-512.png", "icons/apple-touch-icon.png", "icons/favicon-32.png",
 ];
 

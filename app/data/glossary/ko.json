@@ -1,5 +1,4 @@
-[
-{"term":"대박","lang":"ko","meaning_th":"สุดยอด/ว้าว! ใช้อุทานตอนตื่นเต้น ทั้งเรื่องดีและเรื่องเหลือเชื่อ","tag":"slang","domain":"general","aliases":["대박이다","대박!"]},
+[{"term":"대박","lang":"ko","meaning_th":"สุดยอด/ว้าว! ใช้อุทานตอนตื่นเต้น ทั้งเรื่องดีและเรื่องเหลือเชื่อ","tag":"slang","domain":"general","aliases":["대박이다","대박!"]},
 {"term":"헐","lang":"ko","meaning_th":"เฮ้ย!/ห๊ะ? อุทานตอนตกใจ งง หรือไม่อยากเชื่อ ใช้กับเพื่อน ไม่ควรใช้กับผู้ใหญ่","tag":"slang","domain":"general","aliases":["헐~","헐대박"]},
 {"term":"짱","lang":"ko","meaning_th":"เจ๋ง/เยี่ยม/ที่หนึ่ง คำชมแบบเป็นกันเอง","tag":"slang","domain":"general","aliases":["짱이다","완전 짱"]},
 {"term":"꿀잼","lang":"ko","meaning_th":"สนุกมาก (น้ำผึ้ง+สนุก) ชมว่าหนัง/เกม/เรื่องเล่าสนุกสุดๆ","tag":"slang","domain":"general","aliases":["꿀잼이다","핵꿀잼"]},
@@ -273,7 +272,7 @@
 {"term":"분실물","lang":"ko","meaning_th":"ของหาย; 분실물 센터 = ศูนย์รับแจ้งของหาย","tag":"formal","domain":"general","aliases":["잃어버렸어요","분실물 센터"]},
 {"term":"불이야","lang":"ko","meaning_th":"ไฟไหม้! ตะโกนเตือนฉุกเฉิน","tag":"formal","domain":"general","aliases":["불났어요"]},
 {"term":"조심해","lang":"ko","meaning_th":"ระวัง! (조심하세요 = สุภาพ)","tag":"formal","domain":"general","aliases":["조심하세요","위험해요"]},
-{"term":"비상구","lang":"ko","meaning_th":"ทางออกฉุกเฉิน","tag":"formal","domain":"general","aliases":["출구"]},
+{"term":"비상구","lang":"ko","meaning_th":"ทางออกฉุกเฉิน","tag":"formal","domain":"general","aliases":[]},
 {"term":"환불","lang":"ko","meaning_th":"คืนเงิน; 환불해 주세요 = ขอคืนเงิน","tag":"formal","domain":"general","aliases":["환불해 주세요","교환"]},
 {"term":"하지 마세요","lang":"ko","meaning_th":"อย่าทำ/หยุดเถอะ ใช้ปฏิเสธชัดเจนเมื่อไม่ชอบ","tag":"formal","domain":"general","aliases":["하지 마","그만하세요"]},
 {"term":"신고할 거예요","lang":"ko","meaning_th":"ฉันจะแจ้งความ ใช้เมื่อถูกคุกคามหรือโกง","tag":"formal","domain":"general","aliases":["신고","신고하겠습니다"]},
@@ -383,5 +382,4 @@
 {"term":"보증금","lang":"ko","meaning_th":"เงินประกัน/มัดจำ (ได้คืน)","tag":"formal","domain":"general"},
 {"term":"주유소","lang":"ko","meaning_th":"ปั๊มน้ำมัน","tag":"formal","domain":"general"},
 {"term":"가득 채워 주세요","lang":"ko","meaning_th":"เติมเต็มถัง","tag":"formal","domain":"general","aliases":["가득이요"]},
-{"term":"택시","lang":"ko","meaning_th":"แท็กซี่","tag":"formal","domain":"general"}
-]
+{"term":"택시","lang":"ko","meaning_th":"แท็กซี่","tag":"formal","domain":"general"}]

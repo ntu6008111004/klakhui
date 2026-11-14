@@ -89,6 +89,78 @@ export function checkNumbers(input: string, r: TranslationResult): TranslationRe
   return r;
 }
 
+const CJK_DIGIT: Record<string, number> = {
+  零: 0, 〇: 0, 一: 1, 二: 2, 两: 2, 兩: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9,
+  영: 0, 공: 0, 일: 1, 이: 2, 삼: 3, 사: 4, 오: 5, 육: 6, 칠: 7, 팔: 8, 구: 9,
+};
+const CJK_UNIT: Record<string, number> = { 十: 10, 百: 100, 千: 1000, 万: 10000, 萬: 10000, 십: 10, 백: 100, 천: 1000, 만: 10000 };
+
+/**
+ * อ่านตัวเลขเขียนแบบจีน/เกาหลีเป็นค่า: 一千二 = 1200, 两千 = 2000, 八百 = 800, 三万五 = 35000, 만 오천 = 15000
+ * (รูปย่อ: ตัวเลขท้ายหลังหน่วย = หลักถัดลงมา เช่น 一千二 = 1200)
+ */
+export function parseCjkNumber(s: string): number | null {
+  const t = s.replace(/\s+/g, "");
+  if (!t || ![...t].some((c) => c in CJK_UNIT || c in CJK_DIGIT)) return null;
+  let total = 0, section = 0, digit = -1, lastUnit = 0, zeroSeen = false;
+  for (const c of t) {
+    if (c in CJK_DIGIT) { digit = CJK_DIGIT[c]; if (digit === 0) zeroSeen = true; continue; }
+    const u = CJK_UNIT[c];
+    if (u === undefined) return null;
+    const d = digit < 0 ? 1 : digit;
+    if (u === 10000) { total += (section + (digit < 0 ? (section ? 0 : 1) : digit)) * 10000; section = 0; }
+    else section += d * u;
+    lastUnit = u;
+    digit = -1;
+  }
+  // 一千二 → +200 (รูปย่อ) แต่ 一百零五 → +5 (มี 零 คั่น = หลักหน่วยจริง)
+  if (digit >= 0) section += !zeroSeen && lastUnit >= 100 ? digit * (lastUnit === 10000 ? 1000 : lastUnit / 10) : digit;
+  return total + section;
+}
+
+/** เงิน/จำนวนที่เขียนเป็นตัวอักษรจีน/เกาหลีในต้นฉบับ (ไม่รวมเวลา — เวลาเปลี่ยนรูปเป็น ทุ่ม/โมง ได้) */
+export function cjkAmounts(input: string): number[] {
+  const re = /([零〇一二两兩三四五六七八九十百千万萬영공일이삼사오육칠팔구십백천만\s]{1,12})\s*(块|塊|元|钱|錢|毛|个|個|件|张|張|碗|杯|份|瓶|원|개|명|장|잔|병|그릇)/g;
+  const out: number[] = [];
+  for (const m of input.matchAll(re)) {
+    const v = parseCjkNumber(m[1]);
+    if (v !== null && v >= 10) out.push(v);
+  }
+  return out;
+}
+
+/** ตัวเลขเป็นคำไทย (สำหรับยอมรับคำแปลที่เขียนเป็นคำ เช่น "แปดร้อย") */
+export function thaiNumWords(n: number): string {
+  const d = ["", "หนึ่ง", "สอง", "สาม", "สี่", "ห้า", "หก", "เจ็ด", "แปด", "เก้า"];
+  const u = ["", "สิบ", "ร้อย", "พัน", "หมื่น", "แสน", "ล้าน"];
+  const s = String(n);
+  let out = "";
+  for (let i = 0; i < s.length; i++) {
+    const v = Number(s[i]), pos = s.length - 1 - i;
+    if (!v) continue;
+    if (pos === 1 && v === 1) out += "สิบ";
+    else if (pos === 1 && v === 2) out += "ยี่สิบ";
+    else if (pos === 0 && v === 1 && s.length > 1) out += "เอ็ด";
+    else out += d[v] + u[pos];
+  }
+  return out;
+}
+
+/**
+ * เพื่อน→เรา: เงิน/จำนวนที่เขาพูดเป็นตัวอักษร (만 오천 원, 一千二块) ต้องตรงในคำแปลไทย
+ * ไม่ตรง → เตือนพร้อม "ค่าที่ถูก" ที่คำนวณเอง (ไม่พึ่งโมเดล)
+ */
+export function checkCjkAmounts(input: string, r: TranslationResult): TranslationResult {
+  const tr = r.translation.replace(/[,\s]/g, "");
+  const missing = cjkAmounts(input).filter((v) => !tr.includes(String(v)) && !tr.includes(thaiNumWords(v)));
+  if (missing.length) {
+    r.needs_confirm = true;
+    const warn = `⚠️ ตัวเลขที่เขาพูดจริง = ${missing.map((v) => v.toLocaleString("en-US")).join(", ")} — คำแปลอาจผิด เช็กอีกครั้ง`;
+    r.note_th = r.note_th ? `${warn} · ${r.note_th}` : warn;
+  }
+  return r;
+}
+
 /** ป้ายน้ำเสียงให้ตรงกับคำอธิบาย: คำอธิบายบอก "ประชด" แต่ป้ายเป็นพูดเล่น/ชม → ประชด */
 export function fixTone(r: TranslationResult): TranslationResult {
   if (/ประชด|ประชดประชัน/.test(r.note_th ?? "") && ["joke", "compliment", "neutral", "polite"].includes(r.tone)) r.tone = "sarcasm";
@@ -105,6 +177,8 @@ export function cleanReplies(r: TranslationResult, input: string): TranslationRe
   fixTone(r);
   // เรา→เพื่อน (คำแปลไม่ใช่ไทย) + มีตัวเลขในคำพูด → ตรวจว่าตัวเลขครบ
   if (r.translation && /\d/.test(input) && !/[฀-๿]/.test(r.translation)) checkNumbers(input, r);
+  // เพื่อน→เรา (คำแปลเป็นไทย): เงิน/จำนวนที่พูดเป็นตัวอักษรจีน/เกาหลีต้องตรง
+  if (r.translation && /[฀-๿]/.test(r.translation)) checkCjkAmounts(input, r);
   const src = norm(input);
   const seen = new Set<string>();
   r.replies = r.replies.filter((x) => {
