@@ -103,7 +103,7 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
 }
 @media (min-width: 600px) and (max-width: 899px) and (orientation: portrait) {
   .feed, .composer, .replies, .half-head { width: 100%; max-width: 720px; margin-inline: auto; }
-  .card .big { font-size: 26px; }
+  .card .big { font-size: 22px; }
 }
 @media (min-width: 1200px) {
   .app { max-width: 1280px; margin: 0 auto; border-inline: 1px solid var(--line); }
@@ -119,9 +119,9 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
 
 /* ===== ฟีด ===== */
 .feed {
-  list-style: none; margin: 0; padding: 12px 16px 8px;
+  list-style: none; margin: 0; padding: 10px 14px 6px;
   flex: 1; min-height: 0; overflow-y: auto;
-  display: flex; flex-direction: column; gap: 12px;
+  display: flex; flex-direction: column; gap: 9px;
   scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
 }
@@ -137,8 +137,8 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
 .welcome p { margin: 4px 0 0; color: var(--ink-2); font-size: 15px; }
 
 .card {
-  background: var(--card); border-radius: var(--r); box-shadow: var(--shadow);
-  padding: 12px 14px; position: relative;
+  background: var(--card); border-radius: 16px; box-shadow: var(--shadow);
+  padding: 9px 12px; position: relative;
   border-left: 5px solid var(--them);
   animation: in .22s ease-out;
 }
@@ -154,19 +154,19 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
 .card.mine .who { justify-content: flex-end; }
 .card .sent { margin-top: 6px; display: grid; gap: 2px; }
 .card .sent-label { font-size: 13px; color: var(--ink-3); }
-.card .sent-text { font-size: 17px; color: var(--ink-2); line-height: 1.45; word-break: break-word; }
-.card .sent-text.cjk { font-size: 18px; }
+.card .sent-text { font-size: 15px; color: var(--ink-2); line-height: 1.45; word-break: break-word; }
+.card .sent-text.cjk { font-size: 16px; }
 .card .who { font-weight: 600; }
 @keyframes in { from { opacity: 0; transform: translateY(6px); } }
 @media (prefers-reduced-motion: reduce) { .card { animation: none; } .feed { scroll-behavior: auto; } }
 
-.card .who { font-size: 13px; color: var(--ink-3); display: flex; gap: 8px; align-items: center; }
-.card .src { color: var(--ink-2); font-size: 15px; margin: 2px 0 4px; word-break: break-word; }
-.card .big { font-size: clamp(19px, 5.2vw, 24px); line-height: 1.42; font-weight: 500; word-break: break-word; }
-.card .big.cjk { font-size: clamp(20px, 5.6vw, 26px); }
-.card .back { margin-top: 6px; font-size: 15px; color: var(--ink-2); }
+.card .who { font-size: 12px; color: var(--ink-3); display: flex; gap: 8px; align-items: center; }
+.card .src { color: var(--ink-2); font-size: 14px; margin: 1px 0 3px; word-break: break-word; }
+.card .big { font-size: clamp(16px, 4.5vw, 20px); line-height: 1.42; font-weight: 500; word-break: break-word; }
+.card .big.cjk { font-size: clamp(17px, 4.8vw, 21px); }
+.card .back { margin-top: 4px; font-size: 13.5px; color: var(--ink-2); line-height: 1.45; }
 .card .back b { color: var(--ink); font-weight: 600; }
-.card .tools { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; align-items: center; }
+.card .tools { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; align-items: center; }
 .card.pending .big { color: var(--ink-3); }
 .card.pending .big::after { content: " …"; animation: blink 1s infinite; }
 @keyframes blink { 50% { opacity: .2; } }
@@ -174,20 +174,20 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
 .card.queued { border-left-style: dashed; }
 
 .tone {
-  display: inline-flex; align-items: center; gap: 6px;
-  font-size: 15px; font-weight: 600;
-  padding: 3px 10px 3px 8px; border-radius: 999px;
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 13.5px; font-weight: 600;
+  padding: 2px 9px 2px 7px; border-radius: 999px;
   background: var(--them-soft); color: var(--them-press);
 }
 .tone[data-tone="sarcasm"], .tone[data-tone="rude"], .tone[data-tone="complaint"] { background: var(--bad-bg); color: var(--bad); }
 .tone[data-tone="joke"], .tone[data-tone="tease"], .tone[data-tone="compliment"] { background: var(--me-soft); color: var(--me-press); }
 :root[data-theme="dark"] .tone, .tone { }
-.tone-hint { font-size: 14px; color: var(--ink-2); }
+.tone-hint { font-size: 12.5px; color: var(--ink-2); }
 
 .note {
   margin-top: 8px; padding: 8px 12px; border-radius: 12px;
   background: var(--paper); border: 1px solid var(--line);
-  font-size: clamp(15px, 4vw, 17px); line-height: 1.5;
+  font-size: clamp(13.5px, 3.6vw, 15px); line-height: 1.5; padding: 6px 10px;
 }
 .note::before { content: "💡 "; }
 .terms { margin-top: 6px; font-size: 15px; }
@@ -218,7 +218,7 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
 
 /* ===== ปุ่ม ===== */
 .icon-btn {
-  width: 48px; height: 48px; border-radius: 14px; border: 1px solid var(--line);
+  width: 44px; height: 44px; border-radius: 13px; border: 1px solid var(--line);
   background: var(--card); display: inline-grid; place-items: center; color: var(--ink);
   flex: none;
 }
@@ -228,25 +228,25 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
 .icon-btn.small svg { width: 20px; height: 20px; }
 .icon-btn:active { transform: scale(.96); }
 
-.composer { padding: 8px 16px 12px; display: grid; gap: 8px; }
+.composer { padding: 6px 14px 10px; display: grid; gap: 6px; }
 @media (max-height: 760px) {
   .feed { padding: 8px 12px 6px; gap: 10px; }
   .composer { padding: 6px 12px 10px; }
-  .talk { min-height: 56px; font-size: 18px; }
+  .talk { min-height: 48px; font-size: 16px; }
   .half-head { padding: 8px 12px 0; }
   .card { padding: 10px 12px; }
 }
 .action-row { display: flex; gap: 10px; align-items: center; }
 .talk {
-  flex: 1; min-height: 64px; border: 0; border-radius: 20px;
-  display: flex; align-items: center; justify-content: center; gap: 10px;
-  font-size: 20px; font-weight: 600; color: #fff;
+  flex: 1; min-height: 52px; border: 0; border-radius: 16px;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  font-size: 17px; font-weight: 600; color: #fff;
   user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
   touch-action: none;
   box-shadow: 0 2px 0 rgba(0,0,0,.12);
   transition: transform .08s, background .15s;
 }
-.talk svg { width: 28px; height: 28px; }
+.talk svg { width: 22px; height: 22px; }
 .talk-me { background: var(--me); }
 .talk-partner { background: var(--them); }
 .talk.rec { transform: scale(.97); }
@@ -274,8 +274,8 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
 .partner .mic-langs button[aria-checked="true"] { background: var(--them); border-color: var(--them); color: #fff; }
 @media (max-height: 700px) { .mic-langs button { height: 26px; font-size: 12px; } }
 .type-row input {
-  flex: 1; min-width: 0; height: 48px; padding: 0 14px; border-radius: 14px;
-  border: 1px solid var(--line); background: var(--card); font-size: 17px;
+  flex: 1; min-width: 0; height: 44px; padding: 0 12px; border-radius: 13px;
+  border: 1px solid var(--line); background: var(--card); font-size: 16px;
 }
 
 .status-pill {
@@ -302,10 +302,10 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
 .line-btn.danger { color: var(--bad); }
 .line-btn.file { cursor: pointer; }
 .chip-btn {
-  display: inline-flex; align-items: center; gap: 4px; height: 34px; padding: 0 10px;
-  border-radius: 10px; border: 1px solid var(--line); background: transparent; font-size: 14px; color: var(--ink-2);
+  display: inline-flex; align-items: center; gap: 4px; height: 30px; padding: 0 9px;
+  border-radius: 9px; border: 1px solid var(--line); background: transparent; font-size: 13px; color: var(--ink-2);
 }
-.chip-btn svg { width: 18px; height: 18px; }
+.chip-btn svg { width: 16px; height: 16px; }
 
 .big-btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 10px;

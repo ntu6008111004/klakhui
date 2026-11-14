@@ -1,18 +1,24 @@
-name = "realtime-translator-api"
+name = "klakhui-api"
 main = "src/index.ts"
 compatibility_date = "2025-10-01"
 compatibility_flags = ["nodejs_compat"]
 
-# Custom Domain (ผูกตอน Phase 8) — ห้ามแตะ DNS เดิมของ dentcos.com
-# routes = [{ pattern = "api-translate.dentcos.com", custom_domain = true }]
+# Custom Domain ของ Worker — Cloudflare สร้าง DNS ให้เฉพาะ api-translate.dentcos.com เอง
+# (ห้ามแตะ DNS record เดิมของ dentcos.com) / *.workers.dev ใช้เป็นสำรองได้แต่อาจเข้าไม่ได้ในจีน
+routes = [{ pattern = "api-translate.dentcos.com", custom_domain = true }]
+workers_dev = true
 
 [vars]
 THAILLM_URL = "https://thaillm.or.th/api/v1/chat/completions"
 THAILLM_MODEL = "qwen3.6-35b-a3b"
 # รุ่นสำรองบน ThaiLLM เมื่อรุ่นหลักล่ม/ช้า (สลับอัตโนมัติ พักรุ่นหลัก 60 วิ)
 THAILLM_FALLBACK_MODEL = "Typhoon-S-ThaiLLM-8B-Instruct,openthaigpt-thaillm-8b-instruct-v7.2"
-ALLOWED_ORIGIN = "https://translate.dentcos.com"
+# LLM ภายนอก (ฟรี): Typhoon 2.5 30B — ใช้ก่อนรุ่น 8B (key ตั้งเป็น secret FALLBACK_LLM_KEY)
+FALLBACK_LLM_URL = "https://api.opentyphoon.ai/v1/chat/completions"
+FALLBACK_LLM_MODEL = "typhoon-v2.5-30b-a3b-instruct"
+ALLOWED_ORIGIN = "https://translate.dentcos.com,https://klakhui.pages.dev"
 
 # Secrets (ตั้งด้วย `wrangler secret put` เท่านั้น / local ใช้ .dev.vars):
 #   THAILLM_API_KEY
 #   APP_TOKEN
+#   FALLBACK_LLM_KEY

@@ -1,0 +1,18 @@
+# ทดสอบชั่วคราว (ไม่ต้องล็อกอิน): Worker ตัวเดียวเสิร์ฟทั้งหน้าแอป (../app) และ /api/*
+# ใช้: npx wrangler deploy --temporary --config wrangler.temp.toml --secrets-file <ไฟล์ secret>
+name = "klakhui"
+main = "src/index.ts"
+compatibility_date = "2025-10-01"
+compatibility_flags = ["nodejs_compat"]
+
+[assets]
+directory = "../app"
+not_found_handling = "single-page-application"
+
+[vars]
+THAILLM_URL = "https://thaillm.or.th/api/v1/chat/completions"
+THAILLM_MODEL = "qwen3.6-35b-a3b"
+THAILLM_FALLBACK_MODEL = "Typhoon-S-ThaiLLM-8B-Instruct,openthaigpt-thaillm-8b-instruct-v7.2"
+FALLBACK_LLM_URL = "https://api.opentyphoon.ai/v1/chat/completions"
+FALLBACK_LLM_MODEL = "typhoon-v2.5-30b-a3b-instruct"
+ALLOWED_ORIGIN = "*"

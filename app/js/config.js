@@ -27,7 +27,7 @@ const KEY = "klakhui.settings.v1";
 
 export function defaultApi() {
   const h = location.hostname;
-  if (h === "translate.dentcos.com") return "https://api-translate.dentcos.com";
+  if (h === "translate.dentcos.com" || h.endsWith("klakhui.pages.dev")) return "https://api-translate.dentcos.com";
   if (h === "localhost" || h === "127.0.0.1" || h.endsWith(".localhost")) return `http://${h}:8787`;
   return "";
 }

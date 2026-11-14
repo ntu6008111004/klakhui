@@ -31,4 +31,4 @@ jobs:
       - name: Deploy Worker
         run: npx --prefix worker wrangler deploy --config worker/wrangler.toml
       - name: Deploy Pages
-        run: npx --prefix worker wrangler pages deploy app --project-name klakhui --branch main
+        run: npx --prefix worker wrangler pages deploy app --project-name klakhui --branch main --commit-dirty=true
