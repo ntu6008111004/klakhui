@@ -456,3 +456,50 @@ dialog::backdrop { background: rgba(15, 18, 24, .55); }
 .lv-foot { padding: 8px 16px 14px; display: grid; gap: 10px; border-top: 1px solid var(--line); }
 .lv-actions { display: grid; grid-template-columns: 1fr 1.4fr; gap: 10px; }
 @media (min-width: 900px) { .lv-feed, .lv-interim { max-width: 900px; width: 100%; margin: 0 auto; } }
+
+/* ===== แปลจากภาพ / กล้องแปลสด ===== */
+.cam-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 0 18px 20px; }
+.cam-choice {
+  display: grid; justify-items: center; gap: 4px; text-align: center; padding: 18px 10px;
+  border-radius: 16px; border: 1.5px solid var(--line); background: var(--card); color: var(--ink);
+}
+.cam-choice svg { width: 34px; height: 34px; color: var(--me); }
+.cam-choice b { font-size: 16px; }
+.cam-choice small { font-size: 12.5px; color: var(--ink-3); line-height: 1.3; }
+.cam-choice:active { background: var(--me-soft); }
+
+.cam-view {
+  position: fixed; inset: 0; z-index: 15; background: #0d0f12;
+  display: grid; grid-template-rows: minmax(0, 1fr) auto;
+  padding-top: var(--safe-t); padding-bottom: var(--safe-b);
+}
+.cam-stage { position: relative; min-height: 0; overflow: hidden; display: grid; place-items: center; }
+.cam-stage video, .cam-stage img { width: 100%; height: 100%; object-fit: contain; }
+.cam-view[data-mode="live"] #cam-photo, .cam-view[data-mode="photo"] #cam-video { display: none; }
+.cam-x { position: absolute; top: 10px; left: 10px; background: rgba(13,15,18,.7); color: #fff; border-color: rgba(255,255,255,.25); }
+.cam-status {
+  position: absolute; top: 14px; left: 50%; transform: translateX(-50%); max-width: 70%;
+  padding: 6px 12px; border-radius: 999px; font-size: 14px; font-weight: 600;
+  background: rgba(13,15,18,.75); color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.cam-status:empty { display: none; }
+.cam-status[data-kind="ok"] { background: var(--them); }
+.cam-status[data-kind="bad"] { background: var(--bad); }
+.cam-status[data-kind="busy"]::after { content: ""; display: inline-block; width: 8px; height: 8px; margin-left: 8px; border-radius: 50%; background: #fff; animation: pulse 1s infinite; }
+
+.cam-panel {
+  background: var(--paper); color: var(--ink); border-radius: 18px 18px 0 0;
+  max-height: 48dvh; display: grid; grid-template-rows: minmax(0, 1fr) auto auto; padding-top: 6px;
+}
+.cam-list { list-style: none; margin: 0; padding: 4px 14px; overflow-y: auto; display: grid; gap: 6px; align-content: start; }
+.cam-row { padding: 6px 2px; border-bottom: 1px solid var(--line); }
+.cam-src { font-size: 13px; color: var(--ink-3); word-break: break-word; }
+.cam-tr { font-size: clamp(15px, 4.2vw, 18px); font-weight: 600; line-height: 1.4; word-break: break-word; }
+.cam-note { padding: 8px 10px; border-radius: 10px; background: var(--warn-bg); font-size: 14px; }
+.cam-actions { display: flex; gap: 6px; padding: 6px 14px 0; }
+.cam-bar { display: grid; grid-template-columns: 1fr 1.5fr; gap: 8px; padding: 8px 14px 10px; }
+.cam-bar .big-btn { min-height: 48px; font-size: 16px; }
+@media (min-width: 900px) {
+  .cam-view { grid-template-rows: 1fr; grid-template-columns: 1.4fr 1fr; }
+  .cam-panel { max-height: none; border-radius: 0; }
+}

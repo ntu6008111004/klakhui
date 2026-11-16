@@ -384,3 +384,58 @@ describe("sentenceEnd ภาษาไทย (ไม่มีเครื่อ�
     expect(sentenceEnd("รถคุณต้องเปลี่ยนผ้าเบรก ประมาณแปดร้อยหยวนครับ", false)).toBe(0); // หลังท่อนแรกไม่ตัดที่ช่องว่าง
   });
 });
+
+import { fitSize, frameDiff, LiveGate, pairLines, imageDirection } from "../js/core/image.js";
+describe("แปลจากภาพ: ตรรกะ", () => {
+  it("ย่อรูปให้ด้านยาว ≤ max (ไม่ขยายรูปเล็ก)", () => {
+    expect(fitSize(4032, 3024, 1600)).toEqual({ w: 1600, h: 1200 });
+    expect(fitSize(3024, 4032, 1600)).toEqual({ w: 1200, h: 1600 });
+    expect(fitSize(800, 600, 1600)).toEqual({ w: 800, h: 600 });
+  });
+  it("frameDiff", () => {
+    expect(frameDiff(new Uint8Array([10, 20]), new Uint8Array([10, 20]))).toBe(0);
+    expect(frameDiff(new Uint8Array([0, 0]), new Uint8Array([100, 50]))).toBe(75);
+  });
+  it("กล้องสด: อ่านเมื่อนิ่ง + ภาพเปลี่ยน + ห่างพอ (ประหยัดโควตา/เน็ต)", () => {
+    const g = new LiveGate({ minGapMs: 4000 });
+    const A = new Uint8Array(100).fill(50), A2 = new Uint8Array(100).fill(52), B = new Uint8Array(100).fill(150);
+    expect(g.feed(A, 0)).toBe("moving");      // เฟรมแรก
+    expect(g.feed(A2, 450)).toBe("moving");   // นิ่ง 1 เฟรม ยังไม่พอ
+    expect(g.feed(A, 900)).toBe("read");      // นิ่ง 2 เฟรม → อ่าน
+    expect(g.feed(A, 1350)).toBe("busy");     // ยังอ่านไม่เสร็จ
+    g.done();
+    expect(g.feed(A, 1800)).toBe("same");     // ภาพเดิม → ไม่ส่งซ้ำ (ประหยัดเน็ต)
+    expect(g.feed(B, 2250)).toBe("moving");   // ขยับกล้อง
+    g.feed(B, 2700);
+    expect(g.feed(B, 3150)).toBe("wait");     // ภาพใหม่ แต่ยังไม่ครบ 4 วิ (โควตา OCR)
+    expect(g.feed(B, 4950)).toBe("read");
+  });
+  it("จับคู่บรรทัด (คำแปลขาด/เกิน ไม่ทิ้งข้อความ)", () => {
+    expect(pairLines(["a", "b"], "ก\nข")).toEqual([{ src: "a", tr: "ก" }, { src: "b", tr: "ข" }]);
+    expect(pairLines(["a", "b", "c"], "ก\nข")).toEqual([{ src: "a", tr: "ก" }, { src: "b", tr: "ข" }, { src: "c", tr: "" }]);
+    expect(pairLines(["a"], "ก\nข\nค")).toEqual([{ src: "a", tr: "ก ข ค" }]);
+  });
+  it("ทิศทางแปลจากภาษาในรูป", () => {
+    expect(imageDirection("酸菜鱼 68元")).toBe("partner_to_me");
+    expect(imageDirection("Wet floor")).toBe("partner_to_me");
+    expect(imageDirection("ห้ามสูบบุหรี่")).toBe("me_to_partner");
+  });
+});
+describe("คลังคำ: กันจับผิดคำ", () => {
+  const g = new Glossary().load([
+    { term: "菜", lang: "zh", meaning_th: "อ่อน ไม่เก่ง", tag: "slang", domain: "general" },
+    { term: "非常口", lang: "ja", meaning_th: "ทางออกฉุกเฉิน", tag: "formal", domain: "general", aliases: ["ひじょうぐち"] },
+  ]);
+  it("คำแสลงตัวเดียวไม่จับกลางคำอื่น แต่จับเมื่อใช้จริง", () => {
+    expect(g.find("今日特价菜单").map((e) => e.term)).toEqual([]);
+    expect(g.find("你太菜了").map((e) => e.term)).toEqual(["菜"]);
+    expect(g.find("你好菜！").map((e) => e.term)).toEqual(["菜"]);
+  });
+  it("ไฟล์คลังคำจริง: 出口 ไม่ไปจับ 非常口 แล้ว", () => {
+    const load = (l) => JSON.parse(readFileSync(new URL(`../data/glossary/${l}.json`, import.meta.url), "utf8"));
+    const real = new Glossary().load(["zh", "en", "ja", "ko", "th", "learned"].flatMap(load));
+    const terms = real.find("出口はこちら→3番").map((e) => e.term);
+    expect(terms).not.toContain("非常口");
+    expect(real.find("今日特价菜单").map((e) => e.term)).toContain("菜单");
+  });
+});

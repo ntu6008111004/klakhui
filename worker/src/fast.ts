@@ -12,7 +12,7 @@ import { fallbackResult, normalizeResult, parseTranslation, salvagePartial, stri
 import { AppError, errorFromStatus, MESSAGES_TH } from "./resilience";
 import { SseLineReader } from "./streamparse";
 import { maybeProbePrimary, noteKwargs, noteTierFail, noteTierOk, shouldSendKwargs, tierIsDown, tiers, type Tier } from "./thaillm";
-import { cleanReplies, fixCurrency, maxTokensFor } from "./translate";
+import { cleanReplies, contextSarcasm, fixCurrency, maxTokensFor } from "./translate";
 import type { Env, TranslateRequest, TranslationResult } from "./types";
 
 const THAI = /[฀-๿]/;
@@ -126,7 +126,8 @@ export function handleFast(env: Env, req: TranslateRequest, cors: Record<string,
   const t0 = Date.now();
   // เคสแพทย์รอรุ่นใหญ่นานกว่า (ความแม่นสำคัญกว่า)
   // เรา→เพื่อน: คำแปลผิด = เพื่อนเข้าใจผิด → ยอมรอรุ่นใหญ่นานขึ้นนิด / เคสแพทย์รอนานสุด
-  const hedgeMs = o.hedgeMs ?? (req.domain === "medical" ? 3000 : req.direction === "me_to_partner" ? 2500 : 1800);
+  // ข้อความจากรูป (เมนู/ฉลากยา) อ่านแล้วรอได้ แต่ผิดไม่ได้ (กุ้ง≠ไก่ = แพ้อาหาร) → รอรุ่นใหญ่นานสุด
+  const hedgeMs = o.hedgeMs ?? (req.source === "image" ? 4000 : req.domain === "medical" ? 3000 : req.direction === "me_to_partner" ? 2500 : 1800);
   const tierTimeoutMs = o.tierTimeoutMs ?? 9000;
   const { readable, writable } = new TransformStream<Uint8Array, Uint8Array>();
   const w = writable.getWriter();
@@ -141,7 +142,7 @@ export function handleFast(env: Env, req: TranslateRequest, cors: Record<string,
 
   const messages = [
     { role: "system", content: buildSystemPrompt({ direction: req.direction, targetLang: req.target_lang, domain: req.domain, history: req.history, glossary: req.glossary }) },
-    { role: "user", content: buildUserMessage(req.text, req.direction, req.target_lang) },
+    { role: "user", content: buildUserMessage(req.text, req.direction, req.target_lang, req.source) },
   ];
   const maxTokens = maxTokensFor(req.text.length);
 
@@ -242,7 +243,7 @@ export function handleFast(env: Env, req: TranslateRequest, cors: Record<string,
           // แปลกลับก็ต้องไม่เปลี่ยนหน่วยเงิน (元 → หยวน ไม่ใช่บาท) — อ้างอิงจากคำแปลที่ส่งไปจริง
           if (back) parsed.back_translation_th = fixCurrency(tr ?? parsed.translation, back);
         }
-        await finish(parsed, tier);
+        await finish(contextSarcasm(req, parsed), tier);
       } catch (e) {
         if (winner === tier && !finished) {
           // ผู้ชนะหลุดกลางทางหลังส่ง partial → ส่ง result จากคำแปลที่ได้แล้ว (ไม่ให้แอปค้าง)

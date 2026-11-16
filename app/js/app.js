@@ -11,6 +11,7 @@ import { UI, h } from "./ui.js";
 import { db } from "./db.js";
 import { ListenMode } from "./listen-mode.js";
 import { detectHeadset, runWizard, watchDevices } from "./headset.js";
+import { CameraTranslate } from "./camera.js";
 
 const $ = (s) => document.querySelector(s);
 let settings = loadSettings();
@@ -550,6 +551,24 @@ $("#lv-read").addEventListener("click", (e) => {
   if (settings.listenRead === "off") audio.stop();
 });
 
+/* ================= แปลจากภาพ / กล้องแปลสด ================= */
+const camera = new CameraTranslate({
+  api, audio, ui,
+  settings: () => settings,
+  glossary: () => glossary,
+  // "ใส่ในแชต": เก็บผลแปลจากภาพเป็นการ์ดในบทสนทนา (ดูย้อนหลังได้)
+  onSave: (r) => {
+    const t = { id: uid(), who: r.direction === "partner_to_me" ? "partner" : "me", text: r.lines.join("\n"), via: "photo", lang: settings.lang, status: "done", at: Date.now(),
+      result: { translation: r.translation, note_th: r.note, tone: "neutral", terms: [], replies: [], back_translation_th: "", detected_lang: r.direction === "partner_to_me" ? undefined : "th" } };
+    turns.push(t);
+    ui.upsert(t, settings);
+    persist(t);
+  },
+});
+$("#btn-camera").addEventListener("click", () => { audio.unlock(); $("#dlg-camera").showModal(); });
+$("#cam-pick").addEventListener("click", () => { $("#dlg-camera").close(); camera.pickPhoto(); });
+$("#cam-live").addEventListener("click", () => { $("#dlg-camera").close(); wakeLock(); camera.startLive(); });
+
 /* ================= Screen Wake Lock ================= */
 let lock = null;
 async function wakeLock() {
@@ -629,4 +648,4 @@ async function boot() {
 boot();
 
 // เปิดให้ทดสอบ/ดีบักจาก console
-window.__klakhui = { api, audio, listen, get glossary() { return glossary; }, get turns() { return turns; }, settings: () => settings };
+window.__klakhui = { api, audio, listen, camera, get glossary() { return glossary; }, get turns() { return turns; }, settings: () => settings };

@@ -3,6 +3,7 @@ import { primaryIsDown } from "./thaillm";
 import { translate, validateRequest } from "./translate";
 import { handleStream } from "./stream";
 import { handleFast } from "./fast";
+import { MAX_IMAGE_B64, ocrImage, validateImage } from "./ocr";
 import { handleTts, ttsHealth } from "./tts";
 import type { Env } from "./types";
 
@@ -39,11 +40,11 @@ function safeEqual(a: string, b: string): boolean {
   return r === 0;
 }
 
-async function readJson(req: Request): Promise<unknown> {
+async function readJson(req: Request, maxBytes = MAX_BODY_BYTES): Promise<unknown> {
   const len = Number(req.headers.get("Content-Length") || 0);
-  if (len > MAX_BODY_BYTES) throw new AppError("TOO_LARGE");
+  if (len > maxBytes) throw new AppError("TOO_LARGE");
   const buf = await req.arrayBuffer();
-  if (buf.byteLength > MAX_BODY_BYTES) throw new AppError("TOO_LARGE");
+  if (buf.byteLength > maxBytes) throw new AppError("TOO_LARGE");
   try {
     return JSON.parse(new TextDecoder().decode(buf));
   } catch {
@@ -101,6 +102,14 @@ export default {
         if (body.direction !== "partner_to_me") throw new AppError("BAD_INPUT", undefined, undefined, "stream only partner_to_me");
         log(url.pathname, 200, t0);
         return handleStream(env, body, cors, ctx);
+      }
+
+      if (url.pathname === "/api/ocr" && req.method === "POST") {
+        // รูปใหญ่กว่าคำขอข้อความ → เพดานแยก 2.1MB (แอปย่อรูปก่อนส่ง ปกติ 100–300KB)
+        const img = validateImage(await readJson(req, MAX_IMAGE_B64 + 4096));
+        const r = await ocrImage(env, img);
+        log(url.pathname, 200, t0);
+        return json(r, 200, cors);
       }
 
       if (url.pathname === "/api/tts" && req.method === "POST") {

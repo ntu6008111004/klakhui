@@ -145,7 +145,8 @@ export function formatGlossary(glossary: GlossaryHit[]): string {
   if (!glossary.length) return "(none)";
   return glossary
     .slice(0, MAX_GLOSSARY)
-    .map((g) => `- ${g.term}${g.tag ? ` [${g.tag}]` : ""}: ${g.meaning_th}`)
+    // ตัดตัวอย่างในวงเล็บที่มี "=" (เช่น "(撮影禁止=ห้ามถ่ายรูป)") — โมเดลชอบหยิบตัวอย่างไปใส่ในคำแปล/คำเตือนเอง
+    .map((g) => `- ${g.term}${g.tag ? ` [${g.tag}]` : ""}: ${g.meaning_th.replace(/\s*[(（][^()（）]*=[^()（）]*[)）]/g, "").trim()}`)
     .join("\n");
 }
 
@@ -173,7 +174,22 @@ export function buildSystemPrompt(p: PromptInput): string {
 
 const SCRIPT_NAMES: Record<string, string> = { zh: "Chinese", en: "English", ja: "Japanese", ko: "Korean", th: "Thai" };
 
-export function buildUserMessage(text: string, direction: Direction, targetLang: TargetLang): string {
+/** ข้อความที่อ่านจากรูป (เมนู/ป้าย/ฉลาก): แปลรายบรรทัด คงจำนวนบรรทัด ให้แอปจับคู่ต้นฉบับ↔คำแปลได้ */
+function imageMessage(text: string, direction: Direction, targetLang: TargetLang): string {
+  const n = text.split("\n").length;
+  const into = direction === "partner_to_me" ? "THAI (แปลเป็นภาษาไทย)" : LANG_NAMES[targetLang].toUpperCase();
+  return `This text was READ FROM A PHOTO (menu, sign, label, package, notice) — it is NOT speech. Translate it INTO ${into}.
+Translate LINE BY LINE: "translation" must have EXACTLY ${n} lines separated by "\\n", line i = translation of input line i
+(never merge, split, reorder, or skip lines; keep prices/numbers/units exactly; dish names → common Thai name or a short description).
+"note_th": warn about anything important that is ACTUALLY WRITTEN in the input (allergens, prohibitions, prices, dangers)
+in one short Thai sentence, else "". NEVER mention anything that is not in the input lines.
+"replies": []. JSON only.
+INPUT (${n} lines):
+${text}`;
+}
+
+export function buildUserMessage(text: string, direction: Direction, targetLang: TargetLang, source?: "speech" | "image"): string {
+  if (source === "image") return imageMessage(text, direction, targetLang);
   // Spell out the target language in the user message too (small models like 8B follow this better than the system message alone)
   if (direction === "partner_to_me") {
     // ภาษาที่ตรวจจากตัวอักษรได้แน่ๆ → บอกโมเดลตรงๆ ให้ประโยคตอบกลับเป็นภาษาเดียวกับที่เขาพูด

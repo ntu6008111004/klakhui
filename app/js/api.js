@@ -35,6 +35,8 @@ export class Api extends EventTarget {
     this.token = o.token;
     this.limiter = new RateLimiter({ perSec: 4, perMin: 180 });
     this.ttsLimiter = new RateLimiter({ perSec: 6, perMin: 300 });
+    // OCR ของ Typhoon จำกัด 2/วิ, 20/นาที → คุมไว้ต่ำกว่า
+    this.ocrLimiter = new RateLimiter({ perSec: 1, perMin: 15 });
     this.breaker = new CircuitBreaker();
     /** @type {Set<AbortController>} */ this.attempts = new Set();
     this.lastLatency = 0;
@@ -248,6 +250,12 @@ export class Api extends EventTarget {
       { retries: 1, signal },
     );
     return res.blob();
+  }
+
+  /** อ่านตัวอักษรจากรูป (data URL JPEG) → {lines, text, lang} */
+  async ocr(dataUrl, { signal } = {}) {
+    const res = await this.postJson("/api/ocr", { image: dataUrl }, { timeout: 20_000, signal, limiter: this.ocrLimiter, kind: "ocr" });
+    return res.json();
   }
 
   async health() {

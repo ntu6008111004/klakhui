@@ -35,8 +35,9 @@ export function validateRequest(body: unknown): TranslateRequest {
     : [];
   const request_id = typeof b.request_id === "string" && b.request_id ? b.request_id.slice(0, 64) : crypto.randomUUID();
   const segment_id = typeof b.segment_id === "string" ? b.segment_id.slice(0, 64) : undefined;
+  const source = b.source === "image" ? "image" as const : undefined;
 
-  return { text, direction: b.direction as any, target_lang: b.target_lang as any, domain: domain as any, history, glossary, request_id, segment_id };
+  return { text, direction: b.direction as any, target_lang: b.target_lang as any, domain: domain as any, history, glossary, request_id, segment_id, source };
 }
 
 /**
@@ -161,9 +162,27 @@ export function checkCjkAmounts(input: string, r: TranslationResult): Translatio
   return r;
 }
 
+const PRAISE = /さすが|すごいね|お見事|真行|真棒|好样的|厉害了|可真|잘한다|대단하다|잘했네|great job|nice going|well done|good job|way to go|bravo/i;
+const MISHAP = /พัง|แตก|สาย|ผิด|ลืม|หาย|เสีย|พลาด|ตก|壊|割|遅刻|忘れ|失敗|間違|坏|碎|迟到|错|忘|丢|摔|깨|늦|잊|망|실수|떨어|broke|break|late|forgot|lost|mistake|fail|drop|spill/i;
+
+/**
+ * ประชดจากบริบท (ตัดสินเอง ไม่ต้องรอโมเดลแน่ใจ): ประโยคก่อนหน้าพูดถึงความผิดพลาด แล้วเพื่อน "ชม" → ประชด
+ */
+export function contextSarcasm(req: Pick<TranslateRequest, "text" | "history" | "direction">, r: TranslationResult): TranslationResult {
+  if (req.direction !== "partner_to_me" || !PRAISE.test(req.text)) return r;
+  if (!["compliment", "neutral", "polite", "joke"].includes(r.tone)) return r;
+  const recent = req.history.slice(-2).map((h) => `${h.text} ${h.translation ?? ""}`).join(" ");
+  if (!MISHAP.test(recent)) return r;
+  r.tone = "sarcasm";
+  if (!/ประชด/.test(r.note_th)) r.note_th = `น่าจะพูดประชด (เพิ่งมีเรื่องพลาด) ความหมายจริงตรงข้ามกับคำชม${r.note_th ? ` · ${r.note_th}` : ""}`;
+  return r;
+}
+
 /** ป้ายน้ำเสียงให้ตรงกับคำอธิบาย: คำอธิบายบอก "ประชด" แต่ป้ายเป็นพูดเล่น/ชม → ประชด */
 export function fixTone(r: TranslationResult): TranslationResult {
-  if (/ประชด|ประชดประชัน/.test(r.note_th ?? "") && ["joke", "compliment", "neutral", "polite"].includes(r.tone)) r.tone = "sarcasm";
+  const note = r.note_th ?? "";
+  // แค่ "อาจประชด/ประชดก็ได้/หรือประชด" = ความเป็นไปได้ ไม่ใช่ยืนยัน → ไม่เปลี่ยนป้าย
+  if (/ประชด/.test(note) && !/อาจ[^.。]{0,20}ประชด|ประชด[^.。]{0,6}ก็ได้|หรือ(?:พูด)?(?:แบบ)?ประชด|ไม่ได้ประชด|ไม่ใช่ประชด/.test(note) && ["joke", "compliment", "neutral", "polite"].includes(r.tone)) r.tone = "sarcasm";
   return r;
 }
 
@@ -235,7 +254,7 @@ function readResult(content: string, finish: string | null, direction: Translate
 async function translateOnce(env: Env, req: TranslateRequest, ctx: Ctx): Promise<Outcome & { truncated: boolean }> {
   const messages: ChatMessage[] = [
     { role: "system", content: buildSystemPrompt({ direction: req.direction, targetLang: req.target_lang, domain: req.domain, history: req.history, glossary: req.glossary }) },
-    { role: "user", content: buildUserMessage(req.text, req.direction, req.target_lang) },
+    { role: "user", content: buildUserMessage(req.text, req.direction, req.target_lang, req.source) },
   ];
   const maxTokens = maxTokensFor(req.text.length);
   const first = await chat(env, messages, { temperature: 0.3, maxTokens }, ctx);
@@ -272,7 +291,7 @@ export async function translate(env: Env, req: TranslateRequest, ctx?: Ctx, dept
     try {
       const { result, engine, truncated } = await translateOnce(env, step, ctx);
       if (truncated && depth < 2 && step.text.length >= 8) return splitAndTranslate(env, step, ctx, depth);
-      return { result: cleanReplies(result, step.text), engine };
+      return { result: contextSarcasm(step, cleanReplies(result, step.text)), engine };
     } catch (e) {
       if (!isSizeError(e)) throw e;
       lastErr = e;

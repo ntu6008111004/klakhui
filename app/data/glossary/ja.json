@@ -1,5 +1,4 @@
-[
-{"term":"ヤバい","lang":"ja","meaning_th":"แย่มาก/อันตราย หรือ สุดยอดมาก (วัยรุ่นใช้ทั้งบวกและลบ ดูน้ำเสียง)","tag":"slang","domain":"general","aliases":["やばい","ヤバ","やば","ヤバ過ぎ"]},
+[{"term":"ヤバい","lang":"ja","meaning_th":"แย่มาก/อันตราย หรือ สุดยอดมาก (วัยรุ่นใช้ทั้งบวกและลบ ดูน้ำเสียง)","tag":"slang","domain":"general","aliases":["やばい","ヤバ","やば","ヤバ過ぎ"]},
 {"term":"マジ","lang":"ja","meaning_th":"จริงเหรอ/จริงๆ เลย ใช้ทั้งถามตกใจ (マジ?) และเน้นคำ (マジうまい=อร่อยจริงๆ) กันเอง","tag":"slang","domain":"general","aliases":["まじ","マジで","まじで","本気"]},
 {"term":"ガチ","lang":"ja","meaning_th":"จริงจัง/ของแท้/สุดๆ (ガチで=จริงๆ นะ ไม่ได้ล้อเล่น) ภาษาพูดกันเอง","tag":"slang","domain":"general","aliases":["がち","ガチで","がちで"]},
 {"term":"エモい","lang":"ja","meaning_th":"ซึ้ง/อินอารมณ์/ชวนคิดถึง ใช้ชมเพลง รูป บรรยากาศ ความหมายบวก","tag":"teen","domain":"general","aliases":["えもい","エモ"]},
@@ -244,7 +243,7 @@
 {"term":"やめて","lang":"ja","meaning_th":"หยุดนะ!/อย่า! ปฏิเสธชัดเจน ใช้ป้องกันตัวได้","tag":"formal","domain":"general","aliases":["やめてください","止めて"]},
 {"term":"逃げて","lang":"ja","meaning_th":"หนีไป! (ฉุกเฉิน) 避難=อพยพ","tag":"formal","domain":"general","aliases":["にげて","避難","ひなん","避難所"]},
 {"term":"地震","lang":"ja","meaning_th":"แผ่นดินไหว ก้มหลบใต้โต๊ะ ฟังประกาศ 津波=สึนามิ","tag":"formal","domain":"general","aliases":["じしん","津波","つなみ"]},
-{"term":"非常口","lang":"ja","meaning_th":"ทางออกฉุกเฉิน (ป้ายสีเขียว)","tag":"formal","domain":"general","aliases":["ひじょうぐち","出口"]},
+{"term":"非常口","lang":"ja","meaning_th":"ทางออกฉุกเฉิน (ป้ายสีเขียว)","tag":"formal","domain":"general","aliases":["ひじょうぐち"]},
 {"term":"迷子","lang":"ja","meaning_th":"หลงทาง/เด็กพลัดหลง 道に迷いました=ฉันหลงทาง","tag":"formal","domain":"general","aliases":["まいご","道に迷いました","迷った"]},
 {"term":"いくらですか","lang":"ja","meaning_th":"ราคาเท่าไหร่ครับ/คะ สุภาพ","tag":"formal","domain":"general","aliases":["いくら","おいくらですか","幾ら"]},
 {"term":"これください","lang":"ja","meaning_th":"ขออันนี้ครับ (ชี้ของตอนซื้อ/สั่งอาหาร)","tag":"formal","domain":"general","aliases":["これをください","これお願いします"]},
@@ -377,5 +376,5 @@
 {"term":"デポジット","lang":"ja","meaning_th":"เงินมัดจำ (โรงแรม/เช่าของ)","tag":"formal","domain":"general","aliases":["保証金"]},
 {"term":"ガソリンスタンド","lang":"ja","meaning_th":"ปั๊มน้ำมัน","tag":"formal","domain":"general"},
 {"term":"満タン","lang":"ja","meaning_th":"เติมเต็มถัง","tag":"formal","domain":"general"},
-{"term":"タクシー","lang":"ja","meaning_th":"แท็กซี่","tag":"formal","domain":"general"}
-]
+{"term":"タクシー","lang":"ja","meaning_th":"แท็กซี่","tag":"formal","domain":"general"},
+{"term":"出口","lang":"ja","meaning_th":"ทางออก (ทั่วไป) — ไม่ใช่ทางออกฉุกเฉิน (非常口)","tag":"formal","domain":"general","aliases":["でぐち"]}]

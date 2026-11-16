@@ -30,3 +30,11 @@ describe("scriptLang (ตรวจภาษาอัตโนมัติจา�
     ["ห้องน้ำอยู่ไหน", "th"], ["555 ขำมาก", "th"], ["666", null], ["", null],
   ])("%s → %s", (t, want) => expect(scriptLang(t as string)).toBe(want));
 });
+describe("คำใบ้: ตัดตัวอย่างที่ทำให้โมเดลแต่งเพิ่ม", () => {
+  it("ตัด (…=…) ออก แต่เก็บความหมายหลัก", () => {
+    const out = formatGlossary([{ term: "禁止", meaning_th: "ห้าม (禁煙=ห้ามสูบบุหรี่ 撮影禁止=ห้ามถ่ายรูป)" }, { term: "中份", meaning_th: "ขนาดกลาง (จาน)" }]);
+    expect(out).toContain("- 禁止: ห้าม");
+    expect(out).not.toContain("ถ่ายรูป");
+    expect(out).toContain("ขนาดกลาง (จาน)"); // วงเล็บที่ไม่ใช่ตัวอย่าง ยังอยู่
+  });
+});

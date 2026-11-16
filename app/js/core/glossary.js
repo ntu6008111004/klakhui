@@ -51,6 +51,8 @@ export class Glossary {
         for (const { key, entry } of list) {
           if (o.lang && entry.lang !== o.lang) continue;
           if (!src.startsWith(key, i)) continue;
+          // คำแสลงอักษรจีนตัวเดียว (เช่น 菜 = อ่อน) ห้ามจับกลางคำอื่น (菜单 = เมนู) — ยอมให้ตามด้วยคำลงท้าย (你太菜了)
+          if (key.length === 1 && /[一-鿿]/.test(key) && /slang|teen/.test(entry.tag ?? "") && /[一-鿿]/.test(src[i + 1] ?? "") && !"了啊吧呢吗嘛的哦呀啦".includes(src[i + 1])) continue;
           // ภาษาที่มีช่องว่าง (en) ต้องตรงขอบคำ
           if (/^[a-z0-9]/.test(key) && (isWordChar(src[i - 1]) || isWordChar(src[i + key.length]))) continue;
           if (!hits.has(entry.term)) hits.set(entry.term, { entry, len: key.length, pos: i });

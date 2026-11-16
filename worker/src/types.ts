@@ -49,6 +49,8 @@ export interface TranslateRequest {
   glossary: GlossaryHit[];
   request_id: string;
   segment_id?: string;
+  /** "image" = ข้อความจากรูป (เมนู/ป้าย) → แปลรายบรรทัด คงจำนวนบรรทัด */
+  source?: "speech" | "image";
 }
 
 export interface TranslationResult {
@@ -76,4 +78,8 @@ export interface Env {
   FALLBACK_LLM_URL?: string;
   FALLBACK_LLM_KEY?: string;
   FALLBACK_LLM_MODEL?: string;
+  /** OCR (ค่าเริ่มต้น: Typhoon OCR ใช้ key เดียวกับ FALLBACK_LLM_KEY) */
+  OCR_URL?: string;
+  OCR_KEY?: string;
+  OCR_MODEL?: string;
 }

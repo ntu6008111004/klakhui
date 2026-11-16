@@ -276,3 +276,26 @@ describe("อ่านตัวเลขจีน/เกาหลีเอง (�
     expect(checkCjkAmounts("大概八百块", { translation: "ประมาณแปดร้อยหยวน", note_th: "", needs_confirm: false } as any).needs_confirm).toBe(false);
   });
 });
+describe("fixTone ไม่เปลี่ยนป้ายเมื่อแค่ 'อาจประชด'", () => {
+  it.each([
+    ["ขำเพราะตลก แต่อาจพูดแบบประชดก็ได้", "joke", "joke"],
+    ["พูดเล่น ไม่ได้ประชด", "joke", "joke"],
+    ["ชมจริง หรือประชดขึ้นอยู่กับน้ำเสียง", "compliment", "compliment"],
+    ["พูดประชด จริงๆ ไม่พอใจที่มาสาย", "compliment", "sarcasm"],
+  ])("%s", (note, tone, want) => expect(fixTone({ note_th: note, tone } as any).tone).toBe(want));
+});
+import { contextSarcasm } from "../src/translate";
+describe("ประชดจากบริบท", () => {
+  const hist = (t: string) => [{ who: "me" as const, text: t }];
+  it("เพิ่งทำพัง + เพื่อนชม → ประชด", () => {
+    const r = contextSarcasm({ text: "さすがですね", direction: "partner_to_me", history: hist("ฉันทำพังอีกแล้ว") } as any, { tone: "compliment", note_th: "" } as any);
+    expect(r.tone).toBe("sarcasm");
+    expect(r.note_th).toContain("ประชด");
+  });
+  it("ไม่มีเรื่องพลาด → ชมจริง ไม่เปลี่ยน", () => {
+    expect(contextSarcasm({ text: "さすがですね", direction: "partner_to_me", history: hist("ฉันสอบผ่านแล้ว") } as any, { tone: "compliment", note_th: "" } as any).tone).toBe("compliment");
+  });
+  it("ฝั่งเราพูด → ไม่แตะ", () => {
+    expect(contextSarcasm({ text: "great job", direction: "me_to_partner", history: hist("ทำพัง") } as any, { tone: "compliment", note_th: "" } as any).tone).toBe("compliment");
+  });
+});

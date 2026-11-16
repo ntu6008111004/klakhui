@@ -1,5 +1,4 @@
-[
-{"term":"酸菜鱼","lang":"zh","meaning_th":"ปลาต้มผักกาดดอง (ซุปปลาผักดองเสฉวน) — ห้ามแปลเป็นปลาหมึก/กะหล่ำ/ปลาหมัก","tag":"formal","domain":"general","aliases":[]},
+[{"term":"酸菜鱼","lang":"zh","meaning_th":"ปลาต้มผักกาดดอง (ซุปปลาผักดองเสฉวน) — ห้ามแปลเป็นปลาหมึก/กะหล่ำ/ปลาหมัก","tag":"formal","domain":"general","aliases":[]},
 {"term":"酸梅汤","lang":"zh","meaning_th":"น้ำบ๊วย (น้ำบ๊วยเย็นแบบจีน) — ห้ามแปลว่าน้ำส้มสายชู","tag":"formal","domain":"general","aliases":[]},
 {"term":"红烧肉","lang":"zh","meaning_th":"หมูสามชั้นตุ๋นน้ำแดง (เคี่ยวซีอิ๊ว) — ไม่ใช่หมูต้มแดง","tag":"formal","domain":"general","aliases":[]},
 {"term":"碗面","lang":"zh","meaning_th":"บะหมี่ (ชาม) — 三碗面 = บะหมี่ 3 ชาม ห้ามแปลเป็นข้าวผัด/เส้นใหญ่","tag":"formal","domain":"general","aliases":["面条","汤面"]},
@@ -329,5 +328,7 @@
 {"term":"ลูกปืน","lang":"th","meaning_th":"(บริบทช่าง) 轴承 / bearing / ベアリング / 베어링","tag":"tech","domain":"tech","aliases":[]},
 {"term":"โหลดแอป","lang":"th","meaning_th":"下载App / download the app / アプリをダウンロード / 앱 다운로드","tag":"tech","domain":"tech","aliases":["ดาวน์โหลดแอป"]},
 {"term":"น้ำร้อนลวก","lang":"th","meaning_th":"烫伤 / scalded / やけど(熱湯) / 뜨거운 물에 데었어요","tag":"medical","domain":"medical","aliases":[]},
-{"term":"ไมเกรน","lang":"th","meaning_th":"偏头痛 / migraine / 片頭痛 / 편두통","tag":"medical","domain":"medical","aliases":[]}
-]
+{"term":"ไมเกรน","lang":"th","meaning_th":"偏头痛 / migraine / 片頭痛 / 편두통","tag":"medical","domain":"medical","aliases":[]},
+{"term":"菜单","lang":"zh","meaning_th":"เมนูอาหาร","tag":"formal","domain":"general","aliases":["菜谱"]},
+{"term":"蔬菜","lang":"zh","meaning_th":"ผัก","tag":"formal","domain":"general","aliases":[]},
+{"term":"点菜","lang":"zh","meaning_th":"สั่งอาหาร","tag":"formal","domain":"general","aliases":[]}]
