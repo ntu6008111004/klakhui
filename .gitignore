@@ -10,3 +10,5 @@ coverage/
 *.log
 tools/bench-results.json
 tools/bench-results*.json
+ocr-server/.venv/
+__pycache__/
